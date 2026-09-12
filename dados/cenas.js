@@ -97,6 +97,17 @@ window.LEI = {
  *
  * As cores são usadas nas ilustrações: o avatar escolhido é o protagonista
  * desenhado em todas as cenas.
+ *
+ * Três campos além das cores mudam o DESENHO, e não a aparência da cor:
+ *
+ *   `cadeirante`   o protagonista aparece sentado, na cadeira de rodas, em
+ *                  todas as cenas — e não apenas no retrato. Como a cadeira
+ *                  não interfere em nada além do desenho, ela não entra em
+ *                  nenhuma conta da ficha nem do julgamento (RF-14/RF-15).
+ *   `cabeloLongo`  mechas que caem sobre os ombros, para que a cabeça não
+ *                  seja o mesmo semicírculo em todos os retratos.
+ *   `piercing`     argola no septo e brinco no queixo, no retrato — o único
+ *                  rosto do jogo que tem traços onde eles possam cair.
  * ========================================================================== */
 window.AVATARES = [
   {
@@ -110,18 +121,21 @@ window.AVATARES = [
   {
     id: 'av2',
     nome: 'Bruno',
-    descricao: 'Jovem de pele retinta e cabelo crespo escuro.',
+    descricao: 'Jovem de pele retinta e cabelo crespo escuro, em cadeira de rodas.',
     pele: '#7d4c2e',
     cabelo: '#1a1a1a',
-    camisa: '#c98a3c'
+    camisa: '#c98a3c',
+    cadeirante: true
   },
   {
     id: 'av3',
     nome: 'Carla',
-    descricao: 'Jovem de pele clara e cabelo castanho claro.',
-    pele: '#f1cba3',
-    cabelo: '#8a6a3a',
-    camisa: '#4f9e6a'
+    descricao: 'Mulher de pele negra, cabelo roxo comprido e piercing no rosto.',
+    pele: '#7d4c2e',
+    cabelo: '#7e3fc9',
+    camisa: '#4f9e6a',
+    cabeloLongo: true,
+    piercing: true
   },
   {
     id: 'av4',
@@ -1190,12 +1204,22 @@ window.REGRAS = {
  *
  * `efeitos` aceita legitimidade, caixa e xp. Números negativos são despesa ou
  * desgaste; a legitimidade é limitada a 0–100 e a caixa nunca fica negativa.
+ *
+ * `cena` é a chave da ilustração da abordagem, em js/ilustracoes.js. A tela do
+ * evento desenha as DUAS abordagens lado a lado, na ordem em que elas estão
+ * aqui: a primeira leva o número 1, a segunda o número 2, os mesmos números
+ * das teclas e dos botões. Trocar a ordem aqui troca os painéis da imagem.
  * ========================================================================== */
 window.EVENTOS = [
   {
     id: 'ev1',
     fase: 'f1',
     titulo: 'A reunião no salão do bairro',
+    descricaoImagem:
+      'Duas cenas lado a lado, numeradas 1 e 2. Na primeira, o candidato de ' +
+      'pé diante da plateia sentada, de braços abertos, falando sem papel na ' +
+      'mão. Na segunda, o candidato com o mapa de ruas do bairro aberto no ' +
+      'peito, e uma folha circulando entre as cadeiras.',
     mestre:
       'Faltam nove dias para a eleição. O salão da associação de moradores ' +
       'está cheio: quarenta cadeiras de plástico, um ventilador que não dá ' +
@@ -1208,6 +1232,7 @@ window.EVENTOS = [
         nome: 'Subir na cadeira e falar de cabeça, sem papel na mão',
         atributo: 'carisma',
         cd: 12,
+        cena: 'salao',
         resultados: {
           critico: {
             texto:
@@ -1244,6 +1269,7 @@ window.EVENTOS = [
         nome: 'Passar a lista de ruas e dividir as tarefas por quarteirão',
         atributo: 'articulacao',
         cd: 12,
+        cena: 'lista',
         resultados: {
           critico: {
             texto:
@@ -1281,6 +1307,11 @@ window.EVENTOS = [
     id: 'ev2',
     fase: 'f2',
     titulo: 'As últimas quarenta e oito horas',
+    descricaoImagem:
+      'Duas cenas lado a lado, numeradas 1 e 2. Na primeira, o candidato ' +
+      'aperta a mão de um feirante entre as barracas da feira, com o sol ' +
+      'ainda baixo. Na segunda, o candidato aponta para o mapa e para a ' +
+      'planilha da pesquisa abertos sobre a mesa da coordenação.',
     mestre:
       'Faltam dois dias. Sobraram quarenta e oito horas, um carro, quatro ' +
       'cabos eleitorais e um caixa que não dá para tudo. A coordenação está ' +
@@ -1292,6 +1323,7 @@ window.EVENTOS = [
         nome: 'Ir para a feira às cinco da manhã e fazer corpo a corpo até o meio-dia',
         atributo: 'coragem',
         cd: 13,
+        cena: 'feira',
         resultados: {
           critico: {
             texto:
@@ -1326,6 +1358,7 @@ window.EVENTOS = [
         nome: 'Cruzar os números da pesquisa interna e apostar nos dois bairros que decidem',
         atributo: 'discernimento',
         cd: 13,
+        cena: 'planilha',
         resultados: {
           critico: {
             texto:

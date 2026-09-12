@@ -478,6 +478,70 @@ p[tabindex="-1"]:focus-visible {
   .botao--primario { color: #0d1424; }
 }
 
+/* ---------------------------------------------------------------- CAPA */
+/* A capa não pede nada: ela sai com qualquer tecla e com qualquer toque. Por
+   isso não tem botão, e o cursor e a dica dizem que a tela inteira é o alvo. */
+.capa {
+  max-width: 800px;
+  margin: 0 auto;
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  box-shadow: var(--sombra-alta);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.capa__figura { margin: 0; }
+.capa__figura svg { display: block; width: 100%; height: auto; }
+
+.capa__texto {
+  padding: 26px 32px 30px;
+  text-align: center;
+  border-top: 4px solid var(--marca);
+}
+
+.capa__rotulo {
+  font-size: .74rem;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--marca-clara);
+  margin-bottom: 8px;
+}
+
+.capa__titulo {
+  font-size: clamp(2rem, 6.4vw, 3rem);
+  font-weight: 850;
+  letter-spacing: -.02em;
+  line-height: 1.05;
+  margin-bottom: 10px;
+}
+
+.capa__chamada {
+  font-size: clamp(1.02rem, 2.6vw, 1.22rem);
+  font-weight: 700;
+  color: var(--marca-clara);
+  margin-bottom: 16px;
+}
+
+.capa__sinopse {
+  font-size: .98rem;
+  color: var(--texto-suave);
+  max-width: 60ch;
+  margin: 0 auto;
+}
+
+.capa__dica {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--borda);
+  font-size: .84rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+  color: var(--texto-suave);
+}
+
 /* ------------------------------------------------------------ ABERTURA */
 .abertura {
   max-width: 760px;
@@ -786,6 +850,7 @@ p[tabindex="-1"]:focus-visible {
   .contador { font-size: .8rem; padding: 5px 11px; }
   .retorno__topo, .retorno__corpo { padding-left: 18px; padding-right: 18px; }
   .painel, .placar, .abertura { padding-left: 18px; padding-right: 18px; }
+  .capa__texto { padding: 22px 18px 24px; }
   .alt { padding: 12px 14px; gap: 11px; }
   .alt__tecla { display: none; }
   .cena__titulo { font-size: 1.3rem; }
@@ -1516,6 +1581,18 @@ p[tabindex="-1"]:focus-visible {
   box-shadow: var(--sombra-alta);
   padding: 26px 28px 28px;
 }
+
+/* A imagem do evento: as duas conduções lado a lado, numeradas na mesma
+   ordem das teclas e dos botões logo abaixo. */
+.evento__figura {
+  margin: 18px 0 4px;
+  border-radius: var(--raio);
+  overflow: hidden;
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  box-shadow: var(--sombra);
+}
+.evento__figura svg { display: block; width: 100%; height: auto; }
 
 .mestre {
   background: var(--rpg-bg);

@@ -64,12 +64,12 @@ limpa vale mais do que vencê-la com ilícitos no caminho.
 ## Fluxo do jogo
 
 ```
-retrato  →  origem  →  ficha  →  EVENTO (d20)  →  circunstância 1..3  →  juíza do TRE  →  apuração  →  …
-                                   a reta final      4 condutas cada      │             (sorteio)
-                                                                          │ impugnada
-                                                                          ▼
-                                                                 não se elegeu vereador
-                                                                 → refaz a fase 1
+CAPA → retrato → origem → ficha → EVENTO (d20) → circunstância 1..3 → juíza do TRE → apuração → …
+qualquer                          (a reta final)   (4 condutas)        (sorteio)      │
+tecla                                                                                  │ impugnada
+                                                                                       ▼
+                                                                              não se elegeu vereador
+                                                                              → refaz a fase 1
 ```
 
 O ciclo completo se repete na fase 2 (deputado estadual), com **duas condutas
@@ -122,6 +122,14 @@ errando não pode valer tanto quanto o que se acerta.
 
 ## O que o jogador vê
 
+### Na capa
+
+Uma tela só de apresentação, antes de tudo: o jogo inteiro resumido em uma
+imagem — a seção, a fila, a urna e o medalhão da Justiça —, com o título, a
+pergunta que o jogo faz e a sinopse. Ela **não tem botão**: qualquer tecla,
+qualquer clique e qualquer toque a dispensam e abrem a criação do personagem,
+e é isso que a última linha diz.
+
 ### Na criação
 
 Três passos: o **retrato** (só visual, RF-14/15), a **origem** (distribui os
@@ -168,7 +176,7 @@ relatório, lista os ilícitos da candidatura e decide.
 | Bloco | O que é |
 |---|---|
 | `LEI` | transcrições literais dos dispositivos, citadas entre aspas nas telas |
-| `AVATARES` | as opções de retrato e as cores usadas para desenhá-las |
+| `AVATARES` | as opções de retrato, as cores e os três traços de desenho (`cadeirante`, `cabeloLongo`, `piercing`) |
 | `FASES` | as duas candidaturas, a tolerância a ilícitos e quantas condutas ilícitas cada circunstância tem |
 | `CENAS` | as seis circunstâncias e as quatro condutas de cada uma |
 | `PERGUNTAS_RESOLUCAO` | as três perguntas exibidas ao final |
@@ -178,7 +186,7 @@ relatório, lista os ilícitos da candidatura e decide.
 | `ORIGENS` | de onde o candidato vem; define atributos e caixa inicial |
 | `NIVEIS` | a progressão de experiência |
 | `ITENS` | o que a campanha carrega no dia da eleição |
-| `EVENTOS` | os eventos de campanha, resolvidos por d20 |
+| `EVENTOS` | os eventos de campanha, resolvidos por d20; cada abordagem declara a `cena` que a desenha |
 | `REGRAS` | os números que governam a camada de RPG |
 
 Cada **conduta** declara `id`, `texto`, `natureza`, `titulo`, `justificativa`,
@@ -216,10 +224,46 @@ fundamentação de cada escolha continua na tela de derrota.
 **O desenho nunca revela a resposta.** As quatro condutas de uma circunstância
 usam as mesmas cores de figura, fundo e vestuário na ilustração.
 
+**A capa não tem botão, e isso é a decisão, não a falta dela.** Uma tela de
+abertura com um botão "Começar" pede uma mira que a tela ainda não ensinou: o
+jogador chega sem saber onde clicar. Qualquer tecla e qualquer toque servem —
+inclusive Tab e Esc —, e o cabeçalho fica escondido nela, porque contador,
+trilha, ficha e índice só passam a dizer a verdade depois que existe um
+personagem. Na capa o candidato também não é desenhado: quem chega ainda não
+escolheu retrato, e desenhar um avatar antes da escolha seria dizer que já
+existe um personagem.
+
+**O evento tem imagem, e ela traz as DUAS abordagens.** A imagem do evento não
+descreve o que aconteceu — não há veredito a preservar, porque as duas
+abordagens são lícitas. Ela desenha as duas conduções da reta final lado a
+lado, cada painel com o número da opção, os mesmos números das teclas e dos
+botões logo abaixo: a escolha passa a ser feita sobre o que se vê e não só
+sobre o que se lê. Depois de escolhida, o painel tomado fica aceso e o outro
+recebe um véu, para que o jogador continue sabendo em qual das duas cenas está.
+
+**A imagem do evento não põe o candidato em cima da cadeira.** A opção 1 do
+primeiro evento é "subir na cadeira e falar de cabeça", e desenhá-la ao pé da
+letra deixaria de fora todo avatar cadeirante — a cadeira de rodas que o
+jogador escolheu no passo 1 tem de caber também aqui. O painel mostra o que a
+opção cobra (falar sem papel na mão, para a sala inteira) e não o COMO da fala,
+que é o detalhe que excluiria alguém.
+
 **A juíza é desenhada em perfil, e não atrás de uma bancada.** A cadeira de
 rodas é parte de quem ela é, e não um detalhe a esconder. Ela é desenhada em
 três camadas — cadeira de trás, juíza, cadeira da frente —, porque sem essa
 separação ou a roda cobre o colo dela, ou o assento some atrás do corpo.
+
+**O protagonista cadeirante também é desenhado em camadas — e de frente.** O
+avatar de cadeira de rodas é o único que encara o jogador sentado, e a cadeira
+dele é desenhada em volta do MESMO tronco, dos mesmos braços e da mesma cabeça
+de qualquer outro avatar. Só as pernas dão lugar ao assento. É o que mantém o
+broche, a camiseta e o santinho das cenas caindo sobre o corpo, e é o que
+permite trocar um avatar por outro sem tocar em nenhuma cena.
+
+**O piercing existe no retrato, e não na cena.** O rosto das figuras das cenas
+não tem traço nenhum — nem olhos, nem boca —, e uma argola solta em pele nua
+não lê como piercing: lê como borrão. Ele fica no retrato, o único rosto
+desenhado do jogo, onde olhos e sorriso lhe dão a altura em que precisa estar.
 
 **A nota de honestidade intelectual fica visível ao jogador.** O jogo comprime
 o rito da impugnação para caber numa tela, e diz isso na própria tela, com as
@@ -438,6 +482,10 @@ número à vista.**
 
 Dezesseis telas capturadas nos **dois temas**.
 
+Os avatares têm a sua própria revisão, feita quando os dois retratos novos
+entraram. Ela existe porque uma ilustração de cena é pequena: uma cadeira de
+rodas que só se reconhece ampliada não serve.
+
 | Arquivo | Função |
 |---|---|
 | `way/teste-conteudo.js` | transcrições, origem das citações e estrutura fixa |
@@ -446,6 +494,13 @@ Dezesseis telas capturadas nos **dois temas**.
 | `way/moldura-conduta.html` | a bateria inteira em viewports reais, por iframe |
 | `way/captura-jogo.html` | captura de tela por estado, nos dois temas |
 | `way/capturas-jogo/` | capturas |
+| `way/verificar-avatares.js` | prévias dos retratos e das cenas, no tamanho real e ampliados |
+| `way/verificar-eventos.js` | prévias da imagem dos eventos, com e sem escolha feita, e o conferidor de chaves órfãs |
+| `way/teste-avatares.html` | o jogo real dirigido por script — `?avatar=av2` escolhe quem joga, `?ate=N` para o piloto no passo N, `?capa=clique` sai da capa pelo toque em vez da tecla |
+| `way/moldura-evento.html` | a tela da capa e a do evento medidas em viewports reais, por iframe — `?w=320&ate=0` |
+| `way/capa-tema-claro.js` | monta o jogo no tema claro, que o headless não alcança por flag |
+| `way/teste-capa.html` | quais teclas dispensam a capa e quais não — Shift e F5 ficam, "a" sai |
+| `way/previa-*.html`, `way/jogo-*.png`, `way/capa-*.png`, `way/retrato-grande-*.png` | as prévias e as capturas, nos dois temas |
 | `way/verificacao.txt` | registro da última execução |
 | `way/teste-jogo.html`, `way/moldura.html`, `way/capturas/` | verificação da versão original, preservada |
 | `way/rpg-arquivado/` | a edição intermediária, guardada para consulta |
