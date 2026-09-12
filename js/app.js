@@ -30,7 +30,7 @@
  *   'retorno' → fundamentação da conduta, e a consequência na campanha
  *   'juiza'   → o julgamento da candidatura, e depois a apuração
  *   'eleito'  → candidatura deferida; passa à candidatura seguinte
- *   'derrota' → candidatura impugnada na fase 1; refaz a fase
+ *   'derrota' → candidatura indeferida na fase 1; refaz a fase
  *   'final'   → encerramento da carreira
  *
  * Arquitetura: estado explícito, separação entre estado / lógica / renderização
@@ -82,7 +82,7 @@
      renderizar, de modo que um segundo toque no mesmo instante encontra a
      tela já trocada e é ignorado. */
   var estado = {
-    tela: 'capa',
+    tela: 'avatar',
     avatar: null,
     origem: null,
     personagem: null,
@@ -204,24 +204,42 @@
     }, 0);
   }
 
+  function licitoDaFase(i) {
+    return situacoesDaFase(i).length - ilicitoDaFase(i);
+  }
+
   function ilicitoTotal() {
     return estado.escolhas.filter(function (e) { return e.ilicito; }).length;
   }
 
-  /* A CANDIDATURA É IMPUGNADA quando os ilícitos passam do que a fase tolera.
-     Com `tolera: 1`, um ilícito ainda concorre — com advertência — e dois
-     impugnam. */
-  function impugnada(i) {
-    var f = FASES[i];
-    if (!f) return false;
-    return ilicitoDaFase(i) > f.tolera;
+  /* O VEREDITO É A MAIORIA DOS ATOS. Não é uma soma de gravidade, nem um
+     limiar de tolerância: cada circunstância vale um ato, o ato é lícito ou
+     ilícito, e ganha a contagem que for maior. Mais atos lícitos, candidatura
+     DEFERIDA; mais atos ilícitos, candidatura INDEFERIDA.
+
+     Três notas sobre a regra:
+
+     - O EMPATE NÃO INDEFERE. Sem maioria contra o registro, a candidatura
+       passa. Com três circunstâncias por fase o empate nem é alcançável — e o
+       teste de ambiente recusa uma fase que o torne possível. A condição fica
+       escrita de todo modo, porque é ela que diz o que a regra faz.
+     - `tolera`, nos dados, deixou de decidir. Ele continua declarado pela fase
+       (é o que o harness e a documentação conhecem) e o teste de ambiente
+       recusa abrir o jogo quando a declaração discorda da contagem — uma
+       fonte só decide, e a outra é conferida contra ela.
+     - O veredito olha a CANDIDATURA, e não a carreira: o índice zera a cada
+       fase, e a conta se refaz com os atos daquela candidatura. */
+  function indeferida(i) {
+    var atos = situacoesDaFase(i).length;
+    return atos > 0 && ilicitoDaFase(i) * 2 > atos;
   }
 
+  /* O nome do estado continua 'impugnacao' porque é o que o CSS e o harness
+     conhecem; o veredito que ele pinta é o indeferimento do registro. */
   function situacaoDaFase(i) {
-    var f = FASES[i];
     var n = ilicitoDaFase(i);
-    if (!f) return 'limpo';
-    if (n > f.tolera) return 'impugnacao';
+    if (!FASES[i]) return 'limpo';
+    if (indeferida(i)) return 'impugnacao';
     if (n > 0) return 'advertencia';
     return 'limpo';
   }
@@ -261,21 +279,26 @@
       return;
     }
 
-    var f = faseAtual();
     var n = ilicitoDaFase(estado.fase);
+    var atos = situacoesDaFase(estado.fase).length;
     var situacao = situacaoDaFase(estado.fase);
-    var tolera = f ? f.tolera : 1;
-    var teto = tolera + 1;                       /* o valor que impugna */
-    var pct = Math.min(n, teto) / teto * 100;
+    /* A barra mede a fatia ilícita dos atos: metade dela é a linha do
+       veredito — passou de 50%, a maioria é ilícita. */
+    var pct = atos ? n / atos * 100 : 0;
 
     var frase = {
-      limpo: 'Nenhum ilícito nesta candidatura.',
-      advertencia: 'Um ilícito: a candidatura concorre, com advertência.',
-      impugnacao: 'Ilícitos demais: a candidatura está impugnada.'
+      limpo: 'Todos os ' + atos + ' atos foram lícitos.',
+      advertencia: n + (n === 1 ? ' ilícito' : ' ilícitos') + ' em ' + atos +
+        ' atos, e a maioria foi lícita: a candidatura concorre.',
+      impugnacao: n + ' ilícitos em ' + atos + ' atos: a maioria foi ilícita, ' +
+        'e a candidatura está indeferida.'
     }[situacao];
 
+    /* Uma marca por ATO, e não por ilícito tolerado: o veredito é a
+       comparação entre as duas contagens, e uma escala que só mostrasse
+       ilícitos esconderia metade da conta. */
     var marcas = '';
-    for (var i = 0; i <= tolera; i++) {
+    for (var i = 0; i < atos; i++) {
       marcas += '<span class="indice__marca' + (i < n ? ' indice__marca--cheia' : '') +
                '" aria-hidden="true"></span>';
     }
@@ -326,11 +349,6 @@
     var contador = $('#contador');
     var f = faseAtual();
 
-    /* O cabeçalho vivo mentiria sobre um jogo que ainda não começou: a capa é
-       a única tela sem contador, sem trilha, sem ficha e sem índice. */
-    var cab = $('.cabecalho');
-    if (cab) cab.hidden = (estado.tela === 'capa');
-
     if (estado.tela === 'avatar') {
       contador.innerHTML = 'Criação de personagem';
     } else if (estado.tela === 'origem') {
@@ -351,39 +369,6 @@
     renderizarTrilha();
     renderizarFicha();
     renderizarIndice();
-  }
-
-  /* --- Tela: a capa ------------------------------------------------- */
-  /* A capa é a única tela que não pede nada: ela se apresenta e sai. Não tem
-     botão — qualquer tecla e qualquer toque servem —, e por isso não há nada
-     nela que possa ser mal clicado. */
-  function telaCapa() {
-    $('#palco').innerHTML = '' +
-      '<section class="capa entra">' +
-        '<figure class="capa__figura" role="img" aria-label="' +
-          'A seção eleitoral, a fila de eleitores de costas, a urna com a ' +
-          'cédula na fenda e, sobre a rua, o medalhão da Justiça com a balança.">' +
-          (typeof window.ilustracaoDaCapa === 'function'
-            ? window.ilustracaoDaCapa() : '') +
-        '</figure>' +
-        '<div class="capa__texto">' +
-          '<p class="capa__rotulo">Um jogo de decisão sobre o dia da eleição</p>' +
-          '<h1 class="capa__titulo" id="titulo-capa" tabindex="-1">' +
-            'Ilícitos em Jogo</h1>' +
-          '<p class="capa__chamada">O que você faz no dia da eleição?</p>' +
-          '<p class="capa__sinopse">Você tem dezenove anos, acaba de tirar o ' +
-            'título de eleitor e é candidato pela primeira vez. São duas ' +
-            'candidaturas, seis circunstâncias no dia da eleição e quatro ' +
-            'condutas em cada uma — e nenhuma tela diz qual delas é lícita. ' +
-            'Esse julgamento é seu, e é ele que decide se a sua candidatura ' +
-            'sobrevive ao pleito.</p>' +
-          '<p class="capa__dica">Toque na tela, clique ou pressione qualquer ' +
-            'tecla para começar</p>' +
-        '</div>' +
-      '</section>';
-
-    var t = $('#titulo-capa');
-    if (t) t.focus({ preventScroll: true });
   }
 
   /* --- Tela: escolha do avatar (RF-14 / RF-15) --------------------- */
@@ -566,28 +551,6 @@
 
     var passo = (estado.etapaEvento === 'resultado') ? 'O dia começa' : 'A reta final';
 
-    /* A imagem do evento traz as DUAS abordagens, lado a lado. Antes da
-       escolha ela é só a descrição do que cada opção é; depois dela, o painel
-       escolhido fica aceso e o outro recebe um véu — o jogador precisa
-       continuar sabendo em qual das duas conduções ele está. */
-    var figura = '';
-    if (typeof window.ilustracaoDoEvento === 'function') {
-      var abordagemEscolhida = null;
-      if (estado.evento.abordagem) {
-        for (var i = 0; i < ev.abordagens.length; i++) {
-          if (ev.abordagens[i].id === estado.evento.abordagem.id) {
-            abordagemEscolhida = i;
-            break;
-          }
-        }
-      }
-      figura = '' +
-        '<figure class="evento__figura" role="img" aria-label="' +
-            escapar(ev.descricaoImagem || ev.titulo) + '">' +
-          window.ilustracaoDoEvento(ev, estado.avatar, abordagemEscolhida) +
-        '</figure>';
-    }
-
     $('#palco').innerHTML = '' +
       '<article class="evento entra">' +
         '<p class="cena__rotulo">Fase ' + f.numero + ' · ' + escapar(f.cargo) +
@@ -601,7 +564,6 @@
         '<h1 class="cena__titulo" id="titulo-evento" tabindex="-1">' +
           escapar(ev.titulo) + '</h1>' +
         '<p class="cena__enunciado">' + escapar(ev.mestre) + '</p>' +
-        figura +
         corpo +
       '</article>';
 
@@ -800,7 +762,7 @@
   function telaJuiza() {
     var f = faseAtual();
     var n = ilicitoDaFase(estado.fase);
-    var impugnadaAgora = impugnada(estado.fase);
+    var indeferidaAgora = indeferida(estado.fase);
 
     var bloco;
     if (estado.etapaJuiza === 'apuracao') {
@@ -822,8 +784,8 @@
         '</button>';
 
     } else {
-      var veredito = impugnadaAgora
-        ? JUIZA.doisOuMais
+      var veredito = indeferidaAgora
+        ? JUIZA.maioriaIlicita
         : (n === 0 ? JUIZA.semIlicito : JUIZA.umIlicito);
 
       var lista = situacoesDaFase(estado.fase).map(function (c) {
@@ -841,18 +803,30 @@
         '<div class="juiza__fala">' + paragrafos(veredito.fala) + '</div>' +
 
         '<div class="juiza__veredito" data-veredito="' +
-            (impugnadaAgora ? 'impugnada' : 'deferida') + '">' +
+            (indeferidaAgora ? 'indeferida' : 'deferida') + '">' +
           '<p class="juiza__veredito-rotulo">' + escapar(veredito.rotulo) + '</p>' +
           '<h2 class="juiza__veredito-titulo">' + escapar(veredito.titulo) + '</h2>' +
         '</div>' +
+
+        /* A CONTA À VISTA. O veredito é uma comparação entre duas contagens,
+           e um número só não permite conferi-la: os dois aparecem lado a
+           lado, com a regra escrita logo abaixo. */
+        '<div class="juiza__conta">' +
+          '<span class="juiza__conta-numero">' + licitoDaFase(estado.fase) +
+            '<span class="juiza__conta-rotulo"> atos lícitos</span></span>' +
+          '<span class="juiza__conta-x">×</span>' +
+          '<span class="juiza__conta-numero' + (n > 0 ? ' juiza__conta-numero--ilicito' : '') +
+            '">' + n +
+            '<span class="juiza__conta-rotulo"> atos ilícitos</span></span>' +
+          '<span class="juiza__conta-total">em ' +
+            situacoesDaFase(estado.fase).length + ' circunstâncias</span>' +
+        '</div>' +
+        '<p class="juiza__regra">' + escapar(JUIZA.regra) + '</p>' +
 
         (lista
           ? '<div class="juiza__ilicito">' +
               '<h3>O que o índice registrou nesta candidatura</h3>' +
               '<ul class="ilicito-lista">' + lista + '</ul>' +
-              '<p class="juiza__contagem">' + n +
-                (n === 1 ? ' ilícito' : ' ilícitos') +
-                ' · a candidatura tolera ' + f.tolera + '</p>' +
             '</div>'
           : '<p class="juiza__limpo">Nenhuma conduta ilícita foi registrada ' +
             'nesta candidatura.</p>') +
@@ -860,14 +834,14 @@
         '<p class="nota-jogo">' + escapar(JUIZA.nota) + '</p>' +
 
         '<button class="botao botao--primario" type="button" id="btn-julgar">' +
-          (impugnadaAgora
+          (indeferidaAgora
             ? 'Aceitar o julgamento →'
             : 'Acompanhar a apuração →') +
         '</button>';
     }
 
     $('#palco').innerHTML = '' +
-      '<div class="final entra">' +
+      '<div class="final final--juiza entra">' +
         '<section class="juiza" id="topo-juiza" tabindex="-1">' +
           '<figure class="juiza__figura" role="img" aria-label="' +
             escapar('A juíza eleitoral, negra e cadeirante, em toga, sentada ' +
@@ -907,12 +881,13 @@
             escapar(f.cargo) + '</h1>' +
           '<p class="placar__leitura">' +
             (n === 0
-              ? 'A candidatura atravessou o dia da eleição sem uma única ' +
-                'conduta ilícita, e a juíza deferiu o registro sem ressalva. ' +
-                'É esse o resultado que o jogo mede.'
-              : 'A candidatura foi deferida com advertência: houve uma ' +
-                'conduta ilícita, e ela ficou registrada. Você concorre — mas ' +
-                'o registro não desaparece porque a eleição deu certo.') +
+              ? 'Todos os atos da candidatura foram lícitos, e a juíza deferiu ' +
+                'o registro sem ressalva. É esse o resultado que o jogo mede.'
+              : 'A maioria dos atos foi lícita, e a juíza deferiu o registro: ' +
+                licitoDaFase(estado.fase) + ' atos lícitos contra ' + n +
+                (n === 1 ? ' ilícito' : ' ilícitos') + '. A candidatura ' +
+                'concorre — mas o ilícito ficou registrado, e o registro não ' +
+                'desaparece porque a eleição deu certo.') +
           '</p>' +
         '</section>' +
 
@@ -937,7 +912,7 @@
     window.scrollTo(0, 0);
   }
 
-  /* --- Tela: candidatura impugnada na fase 1 (refaz a fase) --------- */
+  /* --- Tela: candidatura indeferida (refaz a fase) ------------------ */
   function telaDerrota() {
     var f = faseAtual();
     var situacoes = situacoesDaFase(estado.fase);
@@ -946,15 +921,15 @@
     $('#palco').innerHTML = '' +
       '<div class="final entra">' +
         '<section class="placar placar--derrota" id="topo-derrota" tabindex="-1">' +
-          '<p class="placar__rotulo">Fase ' + f.numero + ' · candidatura impugnada</p>' +
+          '<p class="placar__rotulo">Fase ' + f.numero + ' · candidatura indeferida</p>' +
           '<p class="placar__numero">' + n + '<span> ilícitos em ' +
             situacoes.length + '</span></p>' +
           '<h1 class="placar__titulo">Você não vai disputar esta eleição</h1>' +
-          '<p class="placar__leitura">A candidatura tolera ' + f.tolera +
-            (f.tolera === 1 ? ' ilícito' : ' ilícitos') +
-            '. Você acumulou ' + n + ', e a juíza impugnou o registro. Não foi ' +
-            'um passo em falso: foram decisões repetidas, cada uma delas ' +
-            'tomada por alguém que já sabia o que a lei dizia.</p>' +
+          '<p class="placar__leitura">' + n + ' atos ilícitos contra ' +
+            licitoDaFase(estado.fase) + ' lícitos: a maioria foi ilícita, e a ' +
+            'juíza indeferiu o registro. Não foi um passo em falso — foi uma ' +
+            'candidatura em que o ilícito deixou de ser exceção e passou a ser ' +
+            'a regra.</p>' +
         '</section>' +
 
         '<section class="painel">' +
@@ -1021,25 +996,26 @@
     renderizarCabecalho();
 
     var ultima = FASES.length - 1;
-    var impugnadaNaUltima = impugnada(ultima);
+    var indeferidaNaUltima = indeferida(ultima);
     var total = ilicitoTotal();
     var totalCircunstancias = CENAS.length;
 
     var titulo, leitura, classe;
-    if (!impugnadaNaUltima) {
+    if (!indeferidaNaUltima) {
       classe = 'placar--vitoria';
-      titulo = 'Duas candidaturas, e nenhuma impugnada';
-      leitura = 'Você percorreu as duas candidaturas sem que a Justiça ' +
-                'Eleitoral tivesse de interromper nenhuma delas. Ganhar ou ' +
-                'perder a eleição foi decidido pela urna — e não é isso que ' +
-                'este jogo mede.';
+      titulo = 'Duas candidaturas, e nenhuma indeferida';
+      leitura = 'Nas duas candidaturas, a maioria dos seus atos foi lícita, e ' +
+                'a Justiça Eleitoral não teve de interromper nenhuma delas. ' +
+                'Ganhar ou perder a eleição foi decidido pela urna — e não é ' +
+                'isso que este jogo mede.';
     } else {
       classe = 'placar--parcial';
-      titulo = 'Eleito vereador. Candidatura impugnada para deputado.';
-      leitura = 'A primeira candidatura passou. A segunda acumulou ilícitos ' +
-                'demais, e a juíza impugnou o registro — o cargo maior trouxe ' +
-                'circunstâncias mais próximas do limite, e foi nelas que a ' +
-                'diferença entre o permitido e o ilícito custou a eleição.';
+      titulo = 'Eleito vereador. Candidatura indeferida para deputado.';
+      leitura = 'A primeira candidatura passou. Na segunda, a maioria dos ' +
+                'atos foi ilícita, e a juíza indeferiu o registro — o cargo ' +
+                'maior trouxe circunstâncias mais próximas do limite, e foi ' +
+                'nelas que a diferença entre o permitido e o ilícito custou a ' +
+                'eleição.';
     }
 
     var perguntas = (window.PERGUNTAS_RESOLUCAO || []).map(function (p) {
@@ -1086,7 +1062,7 @@
 
     var acoes = '<button class="botao botao--primario" type="button" id="btn-reiniciar">' +
                 'Criar outro personagem</button>';
-    if (impugnadaNaUltima) {
+    if (indeferidaNaUltima) {
       acoes += '<button class="botao botao--contorno" type="button" id="btn-refazer-fase">' +
                'Tentar de novo a fase 2</button>';
     }
@@ -1156,7 +1132,7 @@
 
   function iniciar() {
     limparAnimacao();
-    estado.tela = 'capa';
+    estado.tela = 'avatar';
     estado.avatar = null;
     estado.origem = null;
     estado.personagem = null;
@@ -1174,17 +1150,6 @@
     estado.ultimaFaseImpugnada = false;
     ordemAtual = null;
     cenaDaOrdem = null;
-    renderizarCabecalho();
-    telaCapa();
-    window.scrollTo(0, 0);
-  }
-
-  /* A capa sai por qualquer tecla e por qualquer toque. A troca da tela vem
-     ANTES de renderizar, como em toda transição: a segunda tecla de uma
-     rajada encontra a tela já trocada e é ignorada. */
-  function abrirCriacao() {
-    if (estado.tela !== 'capa') return;
-    estado.tela = 'avatar';
     renderizarCabecalho();
     telaAvatar();
     window.scrollTo(0, 0);
@@ -1388,12 +1353,12 @@
   }
 
   /* O julgamento leva a dois lugares diferentes, e o jogador sabe qual deles
-     antes de tocar no botão: impugnada, a candidatura termina; deferida, ela
+     antes de tocar no botão: indeferida, a candidatura termina; deferida, ela
      vai à urna. Nada da ficha entra nesta decisão. */
   function aposJulgamento() {
     if (estado.tela !== 'juiza' || estado.etapaJuiza !== 'julgamento') return;
 
-    if (impugnada(estado.fase)) {
+    if (indeferida(estado.fase)) {
       estado.ultimaFaseImpugnada = true;
       if (estado.fase === 0) {
         estado.tela = 'derrota';
@@ -1452,9 +1417,6 @@
   document.addEventListener('click', function (ev) {
     if (!ev.target.closest) return;
 
-    /* Na capa, qualquer toque serve — inclusive fora dela. */
-    if (estado.tela === 'capa') { abrirCriacao(); return; }
-
     var av = ev.target.closest('.avatar');
     if (av) { escolherAvatar(av.getAttribute('data-avatar')); return; }
 
@@ -1486,24 +1448,6 @@
        a tecla acionaria o botão E o atalho, duas vezes. */
     var emBotao = document.activeElement &&
                   document.activeElement.tagName === 'BUTTON';
-
-    /* A capa sai com qualquer tecla de entrada — inclusive Tab e Esc: não há
-       navegação a preservar numa tela cujo único caminho é sair dela.
-
-       As exceções são as teclas que não são entrada de nada: as que só
-       modificam outras (Shift, Control…), as de trava (CapsLock…) e as de
-       função. Roubar o F5 de quem quer recarregar a página, ou o F12 de quem
-       quer abrir o inspetor, seria prender o jogador na capa. */
-    var TECLAS_QUE_NAO_ENTRAM = {
-      Shift: 1, Control: 1, Alt: 1, Meta: 1, AltGraph: 1,
-      CapsLock: 1, NumLock: 1, ScrollLock: 1
-    };
-    if (estado.tela === 'capa') {
-      if (TECLAS_QUE_NAO_ENTRAM[ev.key] || /^F\d+$/.test(ev.key)) return;
-      ev.preventDefault();
-      abrirCriacao();
-      return;
-    }
 
     if (estado.tela === 'avatar') {
       var k = ['1', '2', '3', '4'].indexOf(ev.key);
@@ -1585,10 +1529,15 @@
       return 'O arquivo <strong>dados/cenas.js</strong> não foi encontrado, ' +
              'está vazio ou não define uma lista de circunstâncias.';
     }
-    if (!JUIZA || !JUIZA.doisOuMais || !JUIZA.semIlicito || !JUIZA.umIlicito) {
+    if (!JUIZA || !JUIZA.maioriaIlicita || !JUIZA.semIlicito || !JUIZA.umIlicito) {
       return 'O arquivo <strong>dados/cenas.js</strong> não define o ' +
-             'julgamento da juíza (<em>JUIZA</em>), com os três desfechos ' +
-             'possíveis.';
+             'julgamento da juíza (<em>JUIZA</em>): faltam os dois vereditos ' +
+             '(deferida e indeferida) ou os textos de cada caso.';
+    }
+    if (typeof JUIZA.regra !== 'string' || !JUIZA.regra) {
+      return 'O arquivo <strong>dados/cenas.js</strong> não declara a regra do ' +
+             'veredito (<em>JUIZA.regra</em>). O jogador precisa poder ler a ' +
+             'conta que decide a candidatura.';
     }
     if (!SORTE || !SORTE.vitoria || !SORTE.derrota) {
       return 'O arquivo <strong>dados/cenas.js</strong> não define o resultado ' +
@@ -1642,8 +1591,26 @@
                'não lista circunstâncias.';
       }
       if (typeof f.tolera !== 'number') {
-        return 'A fase <em>' + escapar(f.cargo) + '</em> não declara quantos ' +
-               'ilícitos tolera (<em>tolera</em>).';
+        return 'A fase <em>' + escapar(f.cargo) + '</em> não declara a maioria ' +
+               'dos seus atos em ilícitos (<em>tolera</em>).';
+      }
+      /* O veredito é a maioria dos atos, e `tolera` é a declaração da fase
+         sobre essa maioria. Se as duas discordarem, uma das duas está errada —
+         e um jogo que abre com duas regras diferentes é pior do que um jogo
+         que não abre. */
+      var atosFase = f.situacoes.length;
+      var maioria = Math.floor((atosFase - 1) / 2);
+      if (f.tolera !== maioria) {
+        return 'A fase <em>' + escapar(f.cargo) + '</em> tem ' + atosFase +
+               ' circunstâncias e declara tolerar ' + f.tolera +
+               ' ilícito' + (f.tolera === 1 ? '' : 's') + '. Pela maioria dos ' +
+               'atos, o limite desta fase é ' + maioria + '.';
+      }
+      if (atosFase % 2 === 0) {
+        return 'A fase <em>' + escapar(f.cargo) + '</em> tem ' + atosFase +
+               ' circunstâncias, e com um número par de atos o veredito pode ' +
+               'empatar. O veredito é a maioria dos atos: uma fase precisa de ' +
+               'um número ímpar delas.';
       }
       for (var n = 0; n < f.situacoes.length; n++) {
         if (!POR_ID[f.situacoes[n]]) {
@@ -1751,6 +1718,9 @@
    * -------------------------------------------------------------------- */
   window.JOGO = {
     estado: estado,
+    /* A própria conferência de ambiente do jogo, exposta para que o harness
+       possa exigir que o jogo aceite os dados que ele carregou. */
+    conferirAmbiente: conferirAmbiente,
     ordemDaCena: ordemDaCena,
     faseAtual: faseAtual,
     situacoesDaFase: situacoesDaFase,
@@ -1759,11 +1729,12 @@
     opcaoDe: opcaoDe,
     escolhaDe: escolhaDe,
     ilicitoDaFase: ilicitoDaFase,
+    licitoDaFase: licitoDaFase,
     ilicitoTotal: ilicitoTotal,
-    impugnada: impugnada,
+    indeferida: indeferida,
+    impugnada: indeferida,   /* nome antigo, mantido para o harness de way/ */
     situacaoDaFase: situacaoDaFase,
     conquistas: conquistas,
-    abrirCriacao: abrirCriacao,
     escolherAvatar: escolherAvatar,
     escolherOrigem: escolherOrigem,
     comecar: comecarCampanha,

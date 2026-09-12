@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="Jogo educativo sobre conduta lícita e ilícita no dia da eleição. Duas candidaturas, seis circunstâncias, quatro condutas possíveis em cada, e o julgamento da candidatura por uma juíza do TRE.">
+<meta name="theme-color" content="#1f3b73">
+<title>Ilícitos em Jogo — o que você faz no dia da eleição</title>
+
+<link rel="stylesheet" href="../css/estilo.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚖️</text></svg>">
+
+<!-- =========================================================================
+     ORDEM DE CARGA — obrigatória
+       1. dados/cenas.js     conteúdo jurídico editável (US-12) + camada de RPG
+       2. js/ilustracoes.js  ilustrações SVG (RNF-05), inclui a juíza
+       3. js/ficha.js        ficha, atributos, níveis e o d20
+       4. js/app.js          lógica e interface
+     Não há dependência externa, etapa de build, cadastro ou instalação
+     (RNF-02 / US-01). Abra o arquivo direto no navegador.
+     ====================================================================== -->
+<style>.final--juiza{max-width:var(--largura)}.juiza{grid-template-columns:minmax(0,1fr)}.juiza__corpo{max-width:760px;margin:0 auto}</style>
+</head>
+<body>
+
+<header class="cabecalho">
+  <div class="cabecalho__linha">
+    <span class="marca">
+      <span class="marca__icone" aria-hidden="true">⚖</span>
+      Ilícitos em Jogo
+    </span>
+    <span class="contador" id="contador" aria-live="polite">Antes de começar</span>
+  </div>
+
+  <!-- US-10 — indicador de progresso, visível durante toda a partida -->
+  <div class="trilha" id="trilha" role="progressbar"
+       aria-valuemin="0" aria-valuemax="6" aria-valuenow="0"
+       aria-label="Progresso na sequência de situações"></div>
+
+  <!-- A ficha do personagem: nível, atributos, legitimidade e caixa. Mede a
+       CAMPANHA, e não a conduta — nenhum número dela entra no julgamento. -->
+  <div class="ficha" id="ficha" hidden></div>
+
+  <!-- O índice de ilícitos: conta as condutas ilícitas da CANDIDATURA corrente
+       — crimes e condutas vedadas — e é por ele, e só por ele, que a juíza
+       decide se o registro é deferido ou indeferido. A decisão é a maioria
+       dos atos: mais atos lícitos, deferido; mais atos ilícitos, indeferido.
+       A ficha do personagem não entra nessa conta. -->
+  <div class="indice" id="indice" hidden></div>
+</header>
+
+<main class="palco" id="palco" aria-live="polite"></main>
+
+<noscript>
+  <div class="aviso-erro">
+    <h1 class="cena__titulo">Este jogo precisa de JavaScript</h1>
+    <p class="cena__enunciado">Ative o JavaScript no navegador para jogar. Não há
+    cadastro, instalação ou envio de dados: todo o processamento ocorre no seu
+    próprio dispositivo.</p>
+  </div>
+</noscript>
+
+<script src="../dados/cenas.js"></script>
+<script src="../js/ilustracoes.js"></script>
+<script src="../js/ficha.js"></script>
+<script src="../js/app.js"></script>
+<script>
+(function () {
+  function uniao(a, b) {
+    return {
+      left: Math.min(a.left, b.left), top: Math.min(a.top, b.top),
+      right: Math.max(a.right, b.right), bottom: Math.max(a.bottom, b.bottom)
+    };
+  }
+  function caixa(r) {
+    return { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
+  }
+  function medir() {
+    var J = window.JOGO;
+    var fig = document.querySelector(".juiza__figura");
+    var svg = fig && fig.querySelector("svg");
+    var corpo = document.querySelector(".juiza__corpo");
+    var painel = document.querySelector(".juiza");
+    var linhas = [];
+    function linha(nome, r) {
+      linhas.push(nome + ": " + Math.round(r.width || (r.right - r.left)) +
+        "x" + Math.round(r.height || (r.bottom - r.top)) +
+        " em (" + Math.round(r.left) + "," + Math.round(r.top) + ")");
+    }
+    if (!fig || !svg) { document.title = "MEDIDA-ERRO"; return; }
+    linha("palco", document.querySelector(".palco").getBoundingClientRect());
+    linha("painel", painel.getBoundingClientRect());
+    linha("figura", fig.getBoundingClientRect());
+    linha("svg", svg.getBoundingClientRect());
+    linha("coluna de texto", corpo.getBoundingClientRect());
+    /* Onde cai o veredito: é o que a tela existe para dizer, e uma figura
+       maior que o empurre para fora da primeira tela não é ganho. */
+    var ver = document.querySelector(".juiza__veredito");
+    if (ver) {
+      var rv = ver.getBoundingClientRect();
+      linhas.push("veredito: topo em y=" + Math.round(rv.top) +
+        (rv.top > window.innerHeight ? " — ABAIXO DA DOBRA (" +
+          Math.round(rv.top - window.innerHeight) + "px)" : " — visível"));
+    }
+    /* A juíza desenhada: o grupo do sujeito é o <g> escalado de maior área.
+       Dentro dele, os TRÊS ÚLTIMOS filhos são a bancada, o processo e a
+       tábua — que são a MESA, e não o tamanho dela. O contrato é o mesmo que
+       a ilustração declara ("a bancada vem DEPOIS da figura"); se ele deixar
+       de valer, a medição sai errada em silêncio, e por isso ela se confere
+       antes de responder. */
+    var grupos = svg.querySelectorAll("g[transform]");
+    var sujeito = null, area = -1, i;
+    for (i = 0; i < grupos.length; i++) {
+      if (grupos[i].getAttribute("transform").indexOf("scale(") === -1) continue;
+      var r = grupos[i].getBoundingClientRect();
+      if (r.width * r.height > area) { area = r.width * r.height; sujeito = grupos[i]; }
+    }
+    if (sujeito) {
+      var filhos = sujeito.children;
+      var mesa = [filhos[filhos.length - 1], filhos[filhos.length - 2],
+                  filhos[filhos.length - 3]];
+      var mesaLimpa = mesa.every(function (e) {
+        return e.tagName.toLowerCase() === "g";
+      });
+      linhas.push("filhos do sujeito: " + filhos.length +
+        " · os 3 últimos são grupos: " + (mesaLimpa ? "sim" : "NÃO — medição inválida"));
+      if (mesaLimpa) {
+        var u = null;
+        for (i = 0; i < filhos.length - 3; i++) {
+          var rf = caixa(filhos[i].getBoundingClientRect());
+          u = u ? uniao(u, rf) : rf;
+        }
+        if (u) {
+          linha("a juíza desenhada", u);
+          linhas.push("escala do sujeito: " +
+            /scale\(([^)]+)\)/.exec(sujeito.getAttribute("transform"))[1]);
+        }
+      }
+    }
+    var pre = document.createElement("pre");
+    pre.id = "medidas";
+    pre.textContent = "###MEDIDA###\n" + linhas.join("\n") + "\n###FIM###";
+    document.body.appendChild(pre);
+    document.title = "MEDIDA-PRONTA";
+  }
+  window.addEventListener("load", function () {
+    var J = window.JOGO;
+    if (!J) { document.title = "MEDIDA-SEM-JOGO"; return; }
+    J.iniciar();
+    J.escolherAvatar(window.AVATARES[0].id);
+    J.escolherOrigem(window.ORIGENS[0].id);
+    J.comecar();
+    var ev = J.estado.evento;
+    J.escolherAbordagem(ev.evento.abordagens[0].id);
+    J.rolar(); J.revelar(); J.aoDia();
+    var quantas = J.situacoesDaFase(0).length;
+    for (var i = 0; i < quantas; i++) {
+      var c = J.cenaAtual();
+      var conforme = c.opcoes.filter(function (o) {
+        return o.natureza === "conforme";
+      })[0];
+      J.decidir(conforme.id);
+      J.avancar();
+    }
+    /* Duas passagens pelo event loop: uma para o layout assentar, outra para
+       a transição de entrada terminar. Medir durante a animação devolveria a
+       caixa deslocada por alguns pixels. */
+    setTimeout(function () { setTimeout(medir, 400); }, 100);
+  });
+})();
+</script>
+</body>
+</html>
