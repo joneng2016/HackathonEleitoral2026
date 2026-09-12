@@ -1,31 +1,32 @@
 /* =============================================================================
  * ILÍCITOS EM JOGO — lógica da aplicação
  * -----------------------------------------------------------------------------
- * O jogador é um jovem candidato. Ele cria um personagem — retrato e origem —,
- * conduz a campanha pelo evento de abertura de cada fase, e atravessa o dia da
- * eleição decidindo o que FAZER em seis circunstâncias. Ao fim de cada
- * candidatura, uma juíza do TRE julga as condutas que ele escolheu.
+ * O jogador é um jovem candidato. Ele cria o personagem — retrato e história —
+ * e vai direto ao dia da eleição, decidindo o que FAZER em seis circunstâncias,
+ * três em cada candidatura. Ao fim de cada candidatura, uma juíza do TRE julga
+ * as condutas que ele escolheu.
  *
  * DOIS MEDIDORES, E ELES NÃO SE MISTURAM
  * -----------------------------------------------------------------------------
- * A FICHA (js/ficha.js) mede a CAMPANHA: quem o candidato é, quanto prestígio
- * acumulou, quanto dinheiro tem, que nível alcançou. Ela reage a tudo — aos
- * eventos de campanha e às condutas escolhidas.
+ * A EXPERIÊNCIA (js/ficha.js) mede a CAMPANHA: a conduta conforme rende
+ * experiência, o ilícito devolve, e é esse número — e só ele — que diz em que
+ * nível o candidato está. Não há atributo, não há dado e não há dinheiro: a
+ * ficha do candidato tem um número só.
  *
  * O ÍNDICE DE ILÍCITOS mede a CONDUTA: quantas vezes, naquela candidatura, o
  * jogador escolheu uma conduta que a lei alcança. Só ele decide o julgamento
- * da juíza, e nada da ficha entra nessa conta.
+ * da juíza: nenhum ilícito ou um, a candidatura passa — com um, com
+ * advertência; dois ou mais, o registro é indeferido.
  *
- * Essa separação é o ponto. Se a ficha decidisse o julgamento, um personagem
- * carismático ou rico se sairia melhor diante da lei — e o jogo ensinaria
- * exatamente o contrário do que quer ensinar. Dois candidatos com fichas
+ * Essa separação é o ponto. Se a experiência decidisse o julgamento, um
+ * personagem de nível alto se sairia melhor diante da lei — e o jogo ensinaria
+ * exatamente o contrário do que quer ensinar. Dois candidatos com experiências
  * opostas, que escolham as mesmas condutas, são julgados igualmente.
  *
  * ESTADOS
+ *   'capa'    → a abertura
  *   'avatar'  → escolha do retrato              (RF-14 / RF-15)
- *   'origem'  → escolha de onde o candidato vem
- *   'ficha'   → a ficha pronta; a campanha começa
- *   'evento'  → evento de campanha, resolvido por d20
+ *   'origem'  → a história de onde o candidato vem
  *   'cena'    → a circunstância e as quatro condutas oferecidas
  *   'retorno' → fundamentação da conduta, e a consequência na campanha
  *   'juiza'   → o julgamento da candidatura, e depois a apuração
@@ -44,13 +45,17 @@
   var FASES    = window.FASES || [];
   var CENAS    = window.CENAS || [];
   var ORIGENS  = window.ORIGENS || [];
-  var EVENTOS  = window.EVENTOS || [];
-  var ATRIBUTOS = window.ATRIBUTOS || [];
   var JUIZA    = window.JUIZA || null;
   var SORTE    = window.SORTE || null;
 
   var POR_ID = {};
   CENAS.forEach(function (c) { POR_ID[c.id] = c; });
+
+  /* O LIMITE DE ILÍCITOS DA CANDIDATURA. Um ilícito, e só um: com ele o
+     registro passa advertido; a partir do segundo, é indeferido. O número é
+     único para o jogo inteiro, e as fases o declaram em `tolera` — o jogo se
+     recusa a abrir quando a declaração discorda dele. */
+  var LIMITE_ILICITOS = 1;
 
   /* As três naturezas de uma conduta. A distinção entre 'crime' e 'vedacao'
      não é decorativa: o § 1º do art. 39-A diz "É vedada", e não "constitui
@@ -71,13 +76,6 @@
 
   var ICONE_ESTADO = { certo: '✔', errado: '⚠', defensavel: '⊘' };
 
-  var ROTULO_FAIXA = {
-    critico:  'Sucesso crítico',
-    sucesso:  'Sucesso',
-    falha:    'Falha',
-    desastre: 'Falha crítica'
-  };
-
   /* `tela` é a guarda de reentrância: toda transição a sobrescreve antes de
      renderizar, de modo que um segundo toque no mesmo instante encontra a
      tela já trocada e é ignorado. */
@@ -94,9 +92,6 @@
        abrir a fase seguinte. O acumulado aparece no encerramento. */
     ilicitoFase: 0,
     ilicitoCarreira: 0,
-    /* evento de campanha */
-    evento: null,       /* { evento, abordagem, d20, resolucao, deltas } */
-    etapaEvento: null,  /* 'abordagem' | 'rolar' | 'animando' | 'resultado' */
     etapaJuiza: null,   /* 'julgamento' | 'apuracao' */
     sorteio: null,
     ultimoJulgamento: null,
@@ -112,7 +107,6 @@
      1-4 acompanham a posição exibida. */
   var ordemAtual = null;
   var cenaDaOrdem = null;
-  var tempoAnimacao = null;
 
   function embaralhar(lista) {
     var a = lista.slice();
@@ -130,11 +124,6 @@
       cenaDaOrdem = cena.id;
     }
     return ordemAtual;
-  }
-
-  function movimentoReduzido() {
-    return window.matchMedia &&
-           window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
 
   /* ----------------------------------------------------------- UTILIDADES */
@@ -158,7 +147,7 @@
 
   function ehIlicito(opcao) { return opcao.natureza !== 'conforme'; }
 
-  /* A ficha e o dado vêm de js/ficha.js. Se o arquivo faltar, o jogo continua
+  /* A experiência vem de js/ficha.js. Se o arquivo faltar, o jogo continua
      jogável — sem campanha, mas jogável. */
   function temFicha() { return !!(window.RPG && window.RPGUI); }
 
@@ -173,15 +162,6 @@
   }
 
   function cenaAtual() { return situacoesDaFase(estado.fase)[estado.cena] || null; }
-
-  function eventoDaFase(i) {
-    var f = FASES[i];
-    if (!f || !f.evento) return null;
-    for (var k = 0; k < EVENTOS.length; k++) {
-      if (EVENTOS[k].id === f.evento) return EVENTOS[k];
-    }
-    return null;
-  }
 
   function escolhaDe(idCena) {
     for (var i = 0; i < estado.escolhas.length; i++) {
@@ -212,26 +192,29 @@
     return estado.escolhas.filter(function (e) { return e.ilicito; }).length;
   }
 
-  /* O VEREDITO É A MAIORIA DOS ATOS. Não é uma soma de gravidade, nem um
-     limiar de tolerância: cada circunstância vale um ato, o ato é lícito ou
-     ilícito, e ganha a contagem que for maior. Mais atos lícitos, candidatura
-     DEFERIDA; mais atos ilícitos, candidatura INDEFERIDA.
+  /* O VEREDITO É O NÚMERO DE ILÍCITOS. Não é uma soma de gravidade: cada
+     circunstância vale um ato, o ato é lícito ou ilícito, e o que decide é
+     quantos ilícitos a candidatura somou.
 
-     Três notas sobre a regra:
+       nenhum ilícito  → DEFERIDA   (o registro passa sem ressalva)
+       um ilícito      → DEFERIDA   (passa com advertência, e o registro fica)
+       dois ou mais    → INDEFERIDA (o registro é negado, e a fase se refaz)
 
-     - O EMPATE NÃO INDEFERE. Sem maioria contra o registro, a candidatura
-       passa. Com três circunstâncias por fase o empate nem é alcançável — e o
-       teste de ambiente recusa uma fase que o torne possível. A condição fica
-       escrita de todo modo, porque é ela que diz o que a regra faz.
-     - `tolera`, nos dados, deixou de decidir. Ele continua declarado pela fase
-       (é o que o harness e a documentação conhecem) e o teste de ambiente
-       recusa abrir o jogo quando a declaração discorda da contagem — uma
-       fonte só decide, e a outra é conferida contra ela.
-     - O veredito olha a CANDIDATURA, e não a carreira: o índice zera a cada
-       fase, e a conta se refaz com os atos daquela candidatura. */
+     Duas notas sobre a regra:
+
+     - ELA NÃO OLHA OS ATOS LÍCITOS. Uma candidatura de três atos com dois
+       ilícitos é indeferida, e uma de dez atos com dois ilícitos também. O
+       que a juíza lê é o número de condutas que a lei alcança — não a
+       proporção delas.
+     - `tolera`, nos dados, continua declarado pela fase, e o teste de ambiente
+       recusa abrir o jogo quando a declaração discorda do limite — uma fonte
+       só decide, e a outra é conferida contra ela.
+
+     O veredito olha a CANDIDATURA, e não a carreira: o índice zera a cada
+     fase, e a conta se refaz com os atos daquela candidatura. */
   function indeferida(i) {
     var atos = situacoesDaFase(i).length;
-    return atos > 0 && ilicitoDaFase(i) * 2 > atos;
+    return atos > 0 && ilicitoDaFase(i) > LIMITE_ILICITOS;
   }
 
   /* O nome do estado continua 'impugnacao' porque é o que o CSS e o harness
@@ -282,29 +265,28 @@
     var n = ilicitoDaFase(estado.fase);
     var atos = situacoesDaFase(estado.fase).length;
     var situacao = situacaoDaFase(estado.fase);
-    /* A barra mede a fatia ilícita dos atos: metade dela é a linha do
-       veredito — passou de 50%, a maioria é ilícita. */
     var pct = atos ? n / atos * 100 : 0;
 
     var frase = {
-      limpo: 'Todos os ' + atos + ' atos foram lícitos.',
-      advertencia: n + (n === 1 ? ' ilícito' : ' ilícitos') + ' em ' + atos +
-        ' atos, e a maioria foi lícita: a candidatura concorre.',
-      impugnacao: n + ' ilícitos em ' + atos + ' atos: a maioria foi ilícita, ' +
-        'e a candidatura está indeferida.'
+      limpo: 'Nenhum ilícito. A candidatura vai limpa.',
+      advertencia: 'Um ilícito em ' + atos + ' circunstâncias: a candidatura ' +
+        'passa com advertência — mas o registro fica.',
+      impugnacao: n + ' ilícitos: passou do limite de ' + LIMITE_ILICITOS +
+        ', e por isso a candidatura está indeferida.'
     }[situacao];
 
-    /* Uma marca por ATO, e não por ilícito tolerado: o veredito é a
-       comparação entre as duas contagens, e uma escala que só mostrasse
-       ilícitos esconderia metade da conta. */
+    /* Uma marca por ATO, acesa a cada ilícito. A segunda marca é a DO LIMITE:
+       é ali que a candidatura deixa de concorrer, e é isso que a escala
+       precisa mostrar antes de o jogador chegar lá. */
     var marcas = '';
     for (var i = 0; i < atos; i++) {
       marcas += '<span class="indice__marca' + (i < n ? ' indice__marca--cheia' : '') +
+               (i === LIMITE_ILICITOS ? ' indice__marca--limite' : '') +
                '" aria-hidden="true"></span>';
     }
 
     alvo.innerHTML = '' +
-      '<span class="indice__rotulo">Índice de ilícitos</span>' +
+      '<span class="indice__rotulo">Ilícitos na candidatura</span>' +
       '<span class="indice__barra"><i style="width:' + pct + '%"></i></span>' +
       '<span class="indice__marcas">' + marcas + '</span>' +
       '<b class="indice__valor">' + n + '</b>' +
@@ -336,8 +318,7 @@
     }
 
     trilha.innerHTML = html;
-    trilha.hidden = (estado.tela === 'avatar' || estado.tela === 'origem' ||
-                     estado.tela === 'ficha');
+    trilha.hidden = (estado.tela === 'avatar' || estado.tela === 'origem');
     trilha.setAttribute('aria-valuemax', String(situacoes.length));
     trilha.setAttribute('aria-valuenow', String(Math.min(estado.cena, situacoes.length)));
     trilha.setAttribute('aria-valuetext',
@@ -358,12 +339,8 @@
       contador.innerHTML = 'Criação de personagem';
     } else if (estado.tela === 'origem') {
       contador.innerHTML = 'Criação de personagem';
-    } else if (estado.tela === 'ficha') {
-      contador.innerHTML = 'Antes de começar';
     } else if (estado.tela === 'final') {
       contador.innerHTML = 'Candidatura encerrada';
-    } else if (estado.tela === 'evento') {
-      contador.innerHTML = 'Fase <b>' + f.numero + '</b> · evento de campanha';
     } else if (estado.tela === 'juiza') {
       contador.innerHTML = 'Fase <b>' + f.numero + '</b> · julgamento';
     } else if (!f) {
@@ -425,7 +402,7 @@
 
     $('#palco').innerHTML = '' +
       '<section class="abertura entra">' +
-        '<p class="passo">Passo 1 de 3 · o retrato</p>' +
+        '<p class="passo">Passo 1 de 2 · o retrato</p>' +
         '<h1 class="abertura__titulo" id="titulo-avatar" tabindex="-1">' +
           'Quem vai disputar esta eleição?</h1>' +
         '<p class="abertura__texto">Você tem dezenove anos e vai concorrer a ' +
@@ -435,25 +412,17 @@
         '<div class="avatares" role="group" aria-labelledby="titulo-avatar">' +
           cartoes +
         '</div>' +
-        '<p class="abertura__nota">O retrato é só visual: ele não altera os ' +
-          'atributos nem o julgamento das condutas.</p>' +
+        '<p class="abertura__nota">O retrato é só visual: ele não altera ' +
+          'nada do jogo nem o julgamento das condutas.</p>' +
       '</section>';
 
     var t = $('#titulo-avatar');
     if (t) t.focus({ preventScroll: true });
   }
 
-  /* --- Tela: escolha da origem (define os atributos) --------------- */
+  /* --- Tela: escolha da história (a origem) ------------------------ */
   function telaOrigem() {
     var cartoes = ORIGENS.map(function (org, i) {
-      var atrs = ATRIBUTOS.map(function (a) {
-        return '<span class="origem__atr">' +
-                 '<span class="origem__atr-nome" title="' + escapar(a.nome) + '">' +
-                   escapar(a.abrev) + '</span>' +
-                 '<b class="origem__atr-valor">' + (org.atributos[a.chave] || 0) + '</b>' +
-               '</span>';
-      }).join('');
-
       return '' +
         '<button class="origem" type="button" data-origem="' + escapar(org.id) + '" ' +
                 'aria-label="Escolher a origem ' + escapar(org.nome) + '">' +
@@ -463,172 +432,27 @@
           '</span>' +
           '<span class="origem__desc">' + escapar(org.descricao) + '</span>' +
           '<span class="origem__lema">' + escapar(org.lema) + '</span>' +
-          '<span class="origem__atributos">' + atrs +
-            '<span class="origem__caixa">' + escapar(window.RPG.moeda(org.caixa)) + '</span>' +
-          '</span>' +
         '</button>';
     }).join('');
 
     $('#palco').innerHTML = '' +
       '<section class="abertura entra">' +
-        '<p class="passo">Passo 2 de 3 · a origem</p>' +
+        '<p class="passo">Passo 2 de 2 · a história</p>' +
         '<h1 class="abertura__titulo" id="titulo-origem" tabindex="-1">' +
           'De onde você vem?</h1>' +
-        '<p class="abertura__texto">A origem distribui os mesmos nove pontos ' +
-          'entre os quatro atributos, e todos começam com a mesma caixa de ' +
-          'campanha. Nenhuma origem é melhor que as outras: o que muda é onde ' +
-          'o seu personagem é forte — e cada evento de campanha cobra um ' +
-          'atributo diferente.</p>' +
+        '<p class="abertura__texto">Esta é a história do cidadão que vai ' +
+          'disputar a eleição. Nenhuma origem é melhor que as outras: todas ' +
+          'começam no mesmo lugar e são julgadas pelas mesmas condutas. O que ' +
+          'muda é quem você decide ser antes de o dia começar.</p>' +
         '<div class="origens" role="group" aria-labelledby="titulo-origem">' +
           cartoes +
         '</div>' +
-        '<p class="abertura__nota">Os atributos governam a campanha. ' +
-          'Eles não decidem se uma conduta é lícita — esse julgamento ' +
-          'continua sendo só seu.</p>' +
+        '<p class="abertura__nota">A história é só narrativa: ela não altera ' +
+          'nada do jogo. O que decide o julgamento da sua candidatura são as ' +
+          'condutas que você escolher no dia da eleição.</p>' +
       '</section>';
 
     var t = $('#titulo-origem');
-    if (t) t.focus({ preventScroll: true });
-  }
-
-  /* --- Tela: a ficha pronta ---------------------------------------- */
-  function telaFicha() {
-    $('#palco').innerHTML = '' +
-      '<section class="final entra">' +
-        '<p class="passo passo--centro">Passo 3 de 3 · a ficha</p>' +
-        '<h1 class="abertura__titulo" id="titulo-ficha" tabindex="-1" ' +
-            'style="text-align:center;margin-bottom:18px">' +
-          'Esta é a sua ficha</h1>' +
-        window.RPGUI.fichaCompleta(estado.personagem) +
-        '<p class="abertura__nota">A ficha mede a campanha. O que decide o ' +
-          'julgamento da sua candidatura é outra coisa: as condutas que você ' +
-          'escolher no dia da eleição.</p>' +
-        '<div class="acoes-finais">' +
-          '<button class="botao botao--primario" type="button" id="btn-comecar">' +
-            'Abrir a campanha →</button>' +
-          '<button class="botao botao--contorno" type="button" id="btn-trocar">' +
-            'Refazer a ficha</button>' +
-        '</div>' +
-      '</section>';
-
-    var t = $('#titulo-ficha');
-    if (t) t.focus({ preventScroll: true });
-  }
-
-  /* --- Tela: evento de campanha ------------------------------------ */
-  function telaEvento() {
-    var ev = estado.evento ? estado.evento.evento : null;
-    var f = faseAtual();
-    if (!ev) { telaCena(); return; }
-
-    var corpo;
-
-    if (estado.etapaEvento === 'abordagem') {
-      corpo =
-        '<p class="evento__pergunta" id="pergunta-evento">' +
-          'Como você conduz a campanha nesta reta final?</p>' +
-        '<div class="abordagens" role="group" aria-labelledby="pergunta-evento">' +
-          ev.abordagens.map(function (ab, i) {
-            var at = window.RPG.atributoDe(ab.atributo);
-            return '' +
-              '<button class="abordagem" type="button" data-abordagem="' +
-                      escapar(ab.id) + '">' +
-                '<span class="abordagem__topo">' +
-                  '<span class="abordagem__atributo">' +
-                    '<span aria-hidden="true">' + escapar(at ? at.icone : '') + '</span> ' +
-                    escapar(at ? at.nome : ab.atributo) +
-                  '</span>' +
-                  '<span class="abordagem__cd">CD ' + ab.cd + '</span>' +
-                '</span>' +
-                '<span class="abordagem__nome">' + escapar(ab.nome) + '</span>' +
-                '<span class="abordagem__tecla" aria-hidden="true">' + (i + 1) + '</span>' +
-              '</button>';
-          }).join('') +
-        '</div>';
-
-    } else if (estado.etapaEvento === 'rolar') {
-      var abr = estado.evento.abordagem;
-      var atr = window.RPG.atributoDe(abr.atributo);
-      corpo =
-        '<div class="declaracao">' +
-          '<p class="declaracao__rotulo">Sua aposta</p>' +
-          '<p class="declaracao__nome">' + escapar(abr.nome) + '</p>' +
-          '<p class="declaracao__conta">' +
-            'Discernimento não entra aqui: entra ' +
-            escapar(atr ? atr.nome : abr.atributo) +
-            ', que vale <b>' + (estado.personagem.atributos[abr.atributo] || 0) +
-            '</b>. O dado vai de 1 a 20, e a dificuldade é ' + abr.cd + '.' +
-          '</p>' +
-        '</div>' +
-        '<p class="evento__pergunta">A campanha está nas suas mãos.</p>' +
-        '<button class="botao botao--primario botao--dado" type="button" id="btn-rolar">' +
-          'Rolar o d20 →</button>';
-
-    } else if (estado.etapaEvento === 'animando') {
-      corpo = '<p class="evento__rolando">Rolando o d20…</p>' +
-              '<div class="dado-palco">' + window.RPGUI.dado(null, 'rolando') + '</div>';
-
-    } else {
-      var r = estado.evento.resolucao;
-      var at2 = window.RPG.atributoDe(r.atributo);
-      corpo =
-        '<div class="dado-palco">' + window.RPGUI.dado(r.d20, r.faixa) + '</div>' +
-        '<p class="rolagem__conta">' +
-          '<b>' + r.d20 + '</b> no dado ' +
-          (r.mod >= 0 ? '+ ' : '− ') + Math.abs(r.mod) + ' de ' +
-          escapar(at2 ? at2.nome : r.atributo) +
-          ' = <b>' + r.total + '</b> contra CD ' + r.cd +
-        '</p>' +
-        '<p class="rolagem__faixa" data-faixa="' + escapar(r.faixa) + '">' +
-          escapar(ROTULO_FAIXA[r.faixa]) + '</p>' +
-        '<p class="rolagem__texto">' + escapar(r.texto) + '</p>' +
-        window.RPGUI.efeitos(estado.evento.deltas) +
-        '<button class="botao botao--primario" type="button" id="btn-ao-dia">' +
-          'Ir para o dia da eleição →</button>';
-    }
-
-    var passo = (estado.etapaEvento === 'resultado') ? 'O dia começa' : 'A reta final';
-
-    /* A imagem do evento traz as DUAS abordagens, lado a lado. Antes da
-       escolha ela é só a descrição do que cada opção é; depois dela, o painel
-       escolhido fica aceso e o outro recebe um véu — o jogador precisa
-       continuar sabendo em qual das duas conduções ele está. */
-    var figura = '';
-    if (typeof window.ilustracaoDoEvento === 'function') {
-      var abordagemEscolhida = null;
-      if (estado.evento.abordagem) {
-        for (var i = 0; i < ev.abordagens.length; i++) {
-          if (ev.abordagens[i].id === estado.evento.abordagem.id) {
-            abordagemEscolhida = i;
-            break;
-          }
-        }
-      }
-      figura = '' +
-        '<figure class="evento__figura" role="img" aria-label="' +
-            escapar(ev.descricaoImagem || ev.titulo) + '">' +
-          window.ilustracaoDoEvento(ev, estado.avatar, abordagemEscolhida) +
-        '</figure>';
-    }
-
-    $('#palco').innerHTML = '' +
-      '<article class="evento entra">' +
-        '<p class="cena__rotulo">Fase ' + f.numero + ' · ' + escapar(f.cargo) +
-           ' — ' + passo + '</p>' +
-        (f.mestre
-          ? '<div class="mestre">' +
-              '<p class="mestre__rotulo">A mesa</p>' +
-              '<p class="mestre__texto">' + escapar(f.mestre) + '</p>' +
-            '</div>'
-          : '') +
-        '<h1 class="cena__titulo" id="titulo-evento" tabindex="-1">' +
-          escapar(ev.titulo) + '</h1>' +
-        '<p class="cena__enunciado">' + escapar(ev.mestre) + '</p>' +
-        figura +
-        corpo +
-      '</article>';
-
-    var t = $('#titulo-evento');
     if (t) t.focus({ preventScroll: true });
   }
 
@@ -648,11 +472,15 @@
         '</button>';
     }).join('');
 
-    /* na primeira circunstância de uma fase, reapresenta a candidatura */
+    /* na primeira circunstância de uma fase, reapresenta a candidatura e a
+       narração que a abre */
     var abertura = (estado.cena === 0)
       ? '<div class="fase-abertura">' +
           '<p class="fase-abertura__titulo">' + escapar(f.chamada) + '</p>' +
           '<p class="fase-abertura__texto">' + escapar(f.descricao) + '</p>' +
+          (f.abertura
+            ? '<p class="fase-abertura__texto">' + escapar(f.abertura) + '</p>'
+            : '') +
         '</div>'
       : '';
 
@@ -728,9 +556,9 @@
         '</div>';
     }
 
-    /* A consequência na campanha: a ficha reage à conduta escolhida. Fica
-       separada do bloco jurídico de propósito — são dois medidores distintos,
-       e o jogador precisa ver que um não é o outro. */
+    /* A consequência na campanha: a experiência reage à conduta escolhida.
+       Fica separada do bloco jurídico de propósito — são dois medidores
+       distintos, e o jogador precisa ver que um não é o outro. */
     var consequencia = '';
     if (temFicha() && estado.ultimoJulgamento) {
       var d = estado.ultimoJulgamento;
@@ -739,15 +567,20 @@
           '<p class="consequencia__rotulo">Na campanha</p>' +
           '<p class="consequencia__texto">' +
             escapar(ehIlicito(escolhida)
-              ? 'A conduta ilícita desgasta a campanha — e o desgaste é da ' +
-                'campanha, não do julgamento: quem decide o julgamento é o ' +
-                'índice, e ele conta a conduta, não o seu prestígio.'
+              ? 'A conduta ilícita devolve experiência: errar custa, e o custo ' +
+                'sai do mesmo número que o acerto faz crescer. Mas atenção ao ' +
+                'que decide o seu julgamento — quem lê o seu registro é o ' +
+                'índice de ilícitos, e não a sua experiência.'
               : 'A campanha sai maior do que entrou: a conduta conforme rende ' +
-                'experiência e legitimidade.') +
+                'experiência.') +
           '</p>' +
           window.RPGUI.efeitos(d) +
           (d.subiuNivel
             ? '<p class="consequencia__nivel">Você subiu para o nível ' +
+              d.nivel.nivel + ' — ' + escapar(d.nivel.titulo) + '.</p>'
+            : '') +
+          (d.desceuNivel
+            ? '<p class="consequencia__nivel">Você desceu para o nível ' +
               d.nivel.nivel + ' — ' + escapar(d.nivel.titulo) + '.</p>'
             : '') +
         '</div>';
@@ -846,7 +679,7 @@
 
     } else {
       var veredito = indeferidaAgora
-        ? JUIZA.maioriaIlicita
+        ? JUIZA.doisOuMaisIlicitos
         : (n === 0 ? JUIZA.semIlicito : JUIZA.umIlicito);
 
       var lista = situacoesDaFase(estado.fase).map(function (c) {
@@ -869,18 +702,19 @@
           '<h2 class="juiza__veredito-titulo">' + escapar(veredito.titulo) + '</h2>' +
         '</div>' +
 
-        /* A CONTA À VISTA. O veredito é uma comparação entre duas contagens,
-           e um número só não permite conferi-la: os dois aparecem lado a
-           lado, com a regra escrita logo abaixo. */
+        /* A CONTA À VISTA. O veredito é o número de ilícitos, e o número
+           sozinho não diz nada: ele aparece ao lado do total de circunstâncias
+           e do LIMITE, que é o que o jogador precisa conferir. */
         '<div class="juiza__conta">' +
-          '<span class="juiza__conta-numero">' + licitoDaFase(estado.fase) +
-            '<span class="juiza__conta-rotulo"> atos lícitos</span></span>' +
-          '<span class="juiza__conta-x">×</span>' +
           '<span class="juiza__conta-numero' + (n > 0 ? ' juiza__conta-numero--ilicito' : '') +
             '">' + n +
-            '<span class="juiza__conta-rotulo"> atos ilícitos</span></span>' +
-          '<span class="juiza__conta-total">em ' +
-            situacoesDaFase(estado.fase).length + ' circunstâncias</span>' +
+            '<span class="juiza__conta-rotulo">' +
+              (n === 1 ? ' ilícito' : ' ilícitos') + '</span></span>' +
+          '<span class="juiza__conta-x">em</span>' +
+          '<span class="juiza__conta-numero">' + situacoesDaFase(estado.fase).length +
+            '<span class="juiza__conta-rotulo"> circunstâncias</span></span>' +
+          '<span class="juiza__conta-total">o limite é ' + LIMITE_ILICITOS +
+            (LIMITE_ILICITOS === 1 ? ' ilícito' : ' ilícitos') + '</span>' +
         '</div>' +
         '<p class="juiza__regra">' + escapar(JUIZA.regra) + '</p>' +
 
@@ -944,11 +778,11 @@
             (n === 0
               ? 'Todos os atos da candidatura foram lícitos, e a juíza deferiu ' +
                 'o registro sem ressalva. É esse o resultado que o jogo mede.'
-              : 'A maioria dos atos foi lícita, e a juíza deferiu o registro: ' +
-                licitoDaFase(estado.fase) + ' atos lícitos contra ' + n +
-                (n === 1 ? ' ilícito' : ' ilícitos') + '. A candidatura ' +
-                'concorre — mas o ilícito ficou registrado, e o registro não ' +
-                'desaparece porque a eleição deu certo.') +
+              : 'Um ilícito em ' + situacoesDaFase(estado.fase).length +
+                ' circunstâncias. O limite é um, e a juíza deferiu o registro ' +
+                'com advertência: a candidatura concorre — mas o ilícito ficou ' +
+                'registrado, e o registro não desaparece porque a eleição deu ' +
+                'certo.') +
           '</p>' +
         '</section>' +
 
@@ -986,11 +820,11 @@
           '<p class="placar__numero">' + n + '<span> ilícitos em ' +
             situacoes.length + '</span></p>' +
           '<h1 class="placar__titulo">Você não vai disputar esta eleição</h1>' +
-          '<p class="placar__leitura">' + n + ' atos ilícitos contra ' +
-            licitoDaFase(estado.fase) + ' lícitos: a maioria foi ilícita, e a ' +
-            'juíza indeferiu o registro. Não foi um passo em falso — foi uma ' +
-            'candidatura em que o ilícito deixou de ser exceção e passou a ser ' +
-            'a regra.</p>' +
+          '<p class="placar__leitura">' + n + ' ilícitos em ' + situacoes.length +
+            ' circunstâncias: passou do limite de ' + LIMITE_ILICITOS +
+            ', e a juíza indeferiu o registro. Não foi um passo em falso — foi ' +
+            'uma candidatura em que o ilícito deixou de ser exceção e passou a ' +
+            'ser a regra.</p>' +
         '</section>' +
 
         '<section class="painel">' +
@@ -1003,11 +837,10 @@
         '<section class="painel painel--rp">' +
           '<h2 class="painel__titulo">A campanha volta ao ponto de partida</h2>' +
           '<p class="painel__sub">Refazer a fase devolve a CAMPANHA ao estado ' +
-            'em que ela estava antes de o dia começar — legitimidade, caixa, ' +
-            'experiência e o próprio evento, que é resorteado. O ÍNDICE volta ' +
-            'a zero junto: a candidatura é refeita do zero, e não é uma ' +
-            'segunda chance sobre um registro já manchado. O que não volta ' +
-            'atrás é o que você aprendeu.</p>' +
+            'em que ela estava antes de o dia começar — a experiência volta ao ' +
+            'que era, e o índice de ilícitos volta a zero junto: a candidatura ' +
+            'é refeita do zero, e não é uma segunda chance sobre um registro ' +
+            'já manchado. O que não volta atrás é o que você aprendeu.</p>' +
         '</section>' +
 
         '<div class="acoes-finais">' +
@@ -1031,17 +864,10 @@
         'Você terminou a carreira sem uma única conduta ilícita nas duas ' +
         'candidaturas.' });
     }
-    if (p.legitimidade >= 80) {
-      lista.push({ nome: 'Base sólida', nota:
-        'A campanha terminou com ' + p.legitimidade + ' de legitimidade.' });
-    }
-    if (p.caixa >= 300) {
-      lista.push({ nome: 'Cofre cheio', nota:
-        'Sobrou caixa: ' + window.RPG.moeda(p.caixa) + ' no fim da campanha.' });
-    }
     if (window.RPG.nivelDe(p.xp).maximo) {
       lista.push({ nome: 'Estadista', nota:
-        'Você chegou ao último nível de experiência da campanha.' });
+        'Você terminou a carreira com ' + p.xp + ' de experiência — o teto ' +
+        'do jogo, que só uma campanha inteiramente lícita alcança.' });
     }
     var c05 = escolhaDe('c05');
     if (c05 && !c05.ilicito) {
@@ -1065,18 +891,18 @@
     if (!indeferidaNaUltima) {
       classe = 'placar--vitoria';
       titulo = 'Duas candidaturas, e nenhuma indeferida';
-      leitura = 'Nas duas candidaturas, a maioria dos seus atos foi lícita, e ' +
-                'a Justiça Eleitoral não teve de interromper nenhuma delas. ' +
-                'Ganhar ou perder a eleição foi decidido pela urna — e não é ' +
-                'isso que este jogo mede.';
+      leitura = 'Nas duas candidaturas você ficou dentro do limite de um ' +
+                'ilícito, e a Justiça Eleitoral não teve de interromper ' +
+                'nenhuma delas. Ganhar ou perder a eleição foi decidido pela ' +
+                'urna — e não é isso que este jogo mede.';
     } else {
       classe = 'placar--parcial';
       titulo = 'Eleito vereador. Candidatura indeferida para deputado.';
-      leitura = 'A primeira candidatura passou. Na segunda, a maioria dos ' +
-                'atos foi ilícita, e a juíza indeferiu o registro — o cargo ' +
-                'maior trouxe circunstâncias mais próximas do limite, e foi ' +
-                'nelas que a diferença entre o permitido e o ilícito custou a ' +
-                'eleição.';
+      leitura = 'A primeira candidatura passou. Na segunda, os ilícitos ' +
+                'passaram do limite de ' + LIMITE_ILICITOS + ', e a juíza ' +
+                'indeferiu o registro — o cargo maior trouxe circunstâncias ' +
+                'mais próximas do limite, e foi nelas que a diferença entre o ' +
+                'permitido e o ilícito custou a eleição.';
     }
 
     var perguntas = (window.PERGUNTAS_RESOLUCAO || []).map(function (p) {
@@ -1187,12 +1013,7 @@
   }
 
   /* ------------------------------------------------------------- MÁQUINA */
-  function limparAnimacao() {
-    if (tempoAnimacao) { clearTimeout(tempoAnimacao); tempoAnimacao = null; }
-  }
-
   function iniciar() {
-    limparAnimacao();
     estado.tela = 'capa';
     estado.avatar = null;
     estado.origem = null;
@@ -1202,8 +1023,6 @@
     estado.escolhas = [];
     estado.ilicitoFase = 0;
     estado.ilicitoCarreira = 0;
-    estado.evento = null;
-    estado.etapaEvento = null;
     estado.etapaJuiza = null;
     estado.sorteio = null;
     estado.ultimoJulgamento = null;
@@ -1252,31 +1071,14 @@
 
     estado.origem = org;
     estado.personagem = window.RPG.novoPersonagem(estado.avatar, org);
-    estado.tela = 'ficha';                   /* trocado ANTES de renderizar */
-    renderizarCabecalho();
-    telaFicha();
-    window.scrollTo(0, 0);
-  }
-
-  function comecarCampanha() {
-    if (estado.tela !== 'ficha') return;
+    /* A história é a última escolha antes do dia da eleição: daqui o jogador
+       vai direto para a primeira circunstância. */
     abrirFase(0);
   }
 
-  function trocarPersonagem() {
-    if (estado.tela !== 'ficha') return;
-    estado.avatar = null;
-    estado.origem = null;
-    estado.personagem = null;
-    estado.tela = 'avatar';
-    renderizarCabecalho();
-    telaAvatar();
-    window.scrollTo(0, 0);
-  }
-
   /* Abre uma fase: fotografa a campanha, zera o índice da candidatura, descarta
-     as escolhas daquela fase, redefine a ordem das condutas e leva ao evento de
-     abertura, se houver. */
+     as escolhas daquela fase, redefine a ordem das condutas e vai à primeira
+     circunstância. */
   function abrirFase(i) {
     if (i < 0 || i >= FASES.length) { telaFinal(); return; }
 
@@ -1290,80 +1092,6 @@
     ordemAtual = null;
     cenaDaOrdem = null;
 
-    var ev = eventoDaFase(i);
-    if (ev) {
-      estado.evento = { evento: ev, abordagem: null, d20: null, resolucao: null, deltas: null };
-      estado.etapaEvento = 'abordagem';
-      estado.tela = 'evento';
-      renderizarCabecalho();
-      telaEvento();
-    } else {
-      estado.evento = null;
-      estado.etapaEvento = null;
-      estado.tela = 'cena';
-      renderizarCabecalho();
-      telaCena();
-    }
-    window.scrollTo(0, 0);
-  }
-
-  /* --- Evento de campanha ------------------------------------------ */
-  function escolherAbordagem(idAbordagem) {
-    if (estado.tela !== 'evento' || estado.etapaEvento !== 'abordagem') return;
-    var ev = estado.evento;
-    var ab = null;
-    for (var i = 0; i < ev.evento.abordagens.length; i++) {
-      if (ev.evento.abordagens[i].id === idAbordagem) { ab = ev.evento.abordagens[i]; break; }
-    }
-    if (!ab) return;
-
-    ev.abordagem = ab;
-    ev.d20 = null;
-    ev.resolucao = null;
-    estado.etapaEvento = 'rolar';            /* trocado ANTES de renderizar */
-    renderizarCabecalho();
-    telaEvento();
-    window.scrollTo(0, 0);
-  }
-
-  /* A rolagem é um segundo toque deliberado: primeiro o jogador declara o que
-     vai fazer, depois o dado decide. */
-  function confirmarRolagem() {
-    if (estado.tela !== 'evento' || estado.etapaEvento !== 'rolar') return;
-    var ev = estado.evento;
-    if (!ev || !ev.abordagem) return;
-
-    /* O dado é resolvido AGORA, e não no fim da animação: o estado precisa
-       estar fechado antes de qualquer coisa visual acontecer. */
-    ev.d20 = window.RPG.rolarDado();
-    ev.resolucao = window.RPG.resolverEvento(estado.personagem, ev.abordagem, ev.d20);
-
-    estado.etapaEvento = 'animando';
-    renderizarCabecalho();
-    telaEvento();
-    window.scrollTo(0, 0);
-
-    var espera = movimentoReduzido() ? 0 : 900;
-    tempoAnimacao = setTimeout(function () {
-      tempoAnimacao = null;
-      revelarEvento();
-    }, espera);
-  }
-
-  function revelarEvento() {
-    if (estado.tela !== 'evento') return;
-    var ev = estado.evento;
-    if (!ev || !ev.resolucao || estado.etapaEvento === 'resultado') return;
-
-    ev.deltas = window.RPG.aplicarEfeitos(estado.personagem, ev.resolucao.efeitos);
-    estado.etapaEvento = 'resultado';
-    renderizarCabecalho();
-    telaEvento();
-    window.scrollTo(0, 0);
-  }
-
-  function aoDiaDaEleicao() {
-    if (estado.tela !== 'evento' || estado.etapaEvento !== 'resultado') return;
     estado.tela = 'cena';
     renderizarCabecalho();
     telaCena();
@@ -1498,16 +1226,9 @@
     var org = ev.target.closest('.origem');
     if (org) { escolherOrigem(org.getAttribute('data-origem')); return; }
 
-    var ab = ev.target.closest('.abordagem');
-    if (ab) { escolherAbordagem(ab.getAttribute('data-abordagem')); return; }
-
     var cd = ev.target.closest('.conduta');
     if (cd) { decidir(cd.getAttribute('data-opcao')); return; }
 
-    if (ev.target.closest('#btn-comecar'))       { comecarCampanha();  return; }
-    if (ev.target.closest('#btn-trocar'))        { trocarPersonagem(); return; }
-    if (ev.target.closest('#btn-rolar'))         { confirmarRolagem(); return; }
-    if (ev.target.closest('#btn-ao-dia'))        { aoDiaDaEleicao();  return; }
     if (ev.target.closest('#btn-avancar'))       { avancar();        return; }
     if (ev.target.closest('#btn-julgar'))        { aposJulgamento(); return; }
     if (ev.target.closest('#btn-seguir'))        { seguir();         return; }
@@ -1560,21 +1281,6 @@
       return;
     }
 
-    if (estado.tela === 'evento') {
-      if (estado.etapaEvento === 'abordagem') {
-        var ka = ['1', '2'].indexOf(ev.key);
-        var abds = estado.evento ? estado.evento.evento.abordagens : [];
-        if (ka !== -1 && abds[ka]) {
-          ev.preventDefault();
-          escolherAbordagem(abds[ka].id);
-        }
-      } else if (ev.key === 'Enter' && !emBotao) {
-        if (estado.etapaEvento === 'rolar')          { ev.preventDefault(); confirmarRolagem(); }
-        else if (estado.etapaEvento === 'resultado') { ev.preventDefault(); aoDiaDaEleicao(); }
-      }
-      return;
-    }
-
     if (estado.tela === 'cena') {
       var i = ['1', '2', '3', '4'].indexOf(ev.key);
       var opcoes = ordemDaCena(cenaAtual());
@@ -1589,8 +1295,7 @@
        de resultado são longas, e roubar a tecla de rolagem seria uma
        armadilha. */
     if (ev.key === 'Enter' && !emBotao) {
-      if (estado.tela === 'ficha')        { ev.preventDefault(); comecarCampanha(); }
-      else if (estado.tela === 'retorno') { ev.preventDefault(); avancar(); }
+      if (estado.tela === 'retorno')      { ev.preventDefault(); avancar(); }
       else if (estado.tela === 'juiza') {
         if (estado.etapaJuiza === 'julgamento')    { ev.preventDefault(); aposJulgamento(); }
         else if (estado.etapaJuiza === 'apuracao') { ev.preventDefault(); seguir(); }
@@ -1622,7 +1327,7 @@
       return 'O arquivo <strong>dados/cenas.js</strong> não foi encontrado, ' +
              'está vazio ou não define uma lista de circunstâncias.';
     }
-    if (!JUIZA || !JUIZA.maioriaIlicita || !JUIZA.semIlicito || !JUIZA.umIlicito) {
+    if (!JUIZA || !JUIZA.doisOuMaisIlicitos || !JUIZA.semIlicito || !JUIZA.umIlicito) {
       return 'O arquivo <strong>dados/cenas.js</strong> não define o ' +
              'julgamento da juíza (<em>JUIZA</em>): faltam os dois vereditos ' +
              '(deferida e indeferida) ou os textos de cada caso.';
@@ -1684,26 +1389,17 @@
                'não lista circunstâncias.';
       }
       if (typeof f.tolera !== 'number') {
-        return 'A fase <em>' + escapar(f.cargo) + '</em> não declara a maioria ' +
-               'dos seus atos em ilícitos (<em>tolera</em>).';
+        return 'A fase <em>' + escapar(f.cargo) + '</em> não declara quantos ' +
+               'ilícitos tolera (<em>tolera</em>).';
       }
-      /* O veredito é a maioria dos atos, e `tolera` é a declaração da fase
-         sobre essa maioria. Se as duas discordarem, uma das duas está errada —
+      /* O veredito é o número de ilícitos, e `tolera` é a declaração da fase
+         sobre esse limite. Se as duas discordarem, uma das duas está errada —
          e um jogo que abre com duas regras diferentes é pior do que um jogo
          que não abre. */
-      var atosFase = f.situacoes.length;
-      var maioria = Math.floor((atosFase - 1) / 2);
-      if (f.tolera !== maioria) {
-        return 'A fase <em>' + escapar(f.cargo) + '</em> tem ' + atosFase +
-               ' circunstâncias e declara tolerar ' + f.tolera +
-               ' ilícito' + (f.tolera === 1 ? '' : 's') + '. Pela maioria dos ' +
-               'atos, o limite desta fase é ' + maioria + '.';
-      }
-      if (atosFase % 2 === 0) {
-        return 'A fase <em>' + escapar(f.cargo) + '</em> tem ' + atosFase +
-               ' circunstâncias, e com um número par de atos o veredito pode ' +
-               'empatar. O veredito é a maioria dos atos: uma fase precisa de ' +
-               'um número ímpar delas.';
+      if (f.tolera !== LIMITE_ILICITOS) {
+        return 'A fase <em>' + escapar(f.cargo) + '</em> declara tolerar ' +
+               f.tolera + ' ilícito' + (f.tolera === 1 ? '' : 's') + ', e o ' +
+               'limite do jogo é ' + LIMITE_ILICITOS + '.';
       }
       for (var n = 0; n < f.situacoes.length; n++) {
         if (!POR_ID[f.situacoes[n]]) {
@@ -1729,52 +1425,37 @@
              '<em>PERGUNTAS_RESOLUCAO</em>, exigidas ao final da partida.';
     }
 
-    /* Camada de RPG — conferida com o mesmo rigor, e pelo mesmo motivo. */
+    /* A experiência — conferida com o mesmo rigor, e pelo mesmo motivo. */
     if (!window.RPG || !window.RPGUI) {
       return 'O arquivo <strong>js/ficha.js</strong> não foi carregado. Ele ' +
-             'define a ficha do personagem, os atributos e os eventos de ' +
-             'campanha.';
+             'define a experiência do candidato e os níveis que ela abre.';
     }
     if (!Array.isArray(ORIGENS) || ORIGENS.length === 0) {
       return 'O arquivo <strong>dados/cenas.js</strong> não define as origens ' +
              '(<em>ORIGENS</em>).';
     }
-    if (!Array.isArray(ATRIBUTOS) || ATRIBUTOS.length === 0) {
-      return 'O arquivo <strong>dados/cenas.js</strong> não define os atributos ' +
-             '(<em>ATRIBUTOS</em>).';
+    if (!Array.isArray(window.NIVEIS) || window.NIVEIS.length === 0) {
+      return 'O arquivo <strong>dados/cenas.js</strong> não define os níveis ' +
+             '(<em>NIVEIS</em>).';
     }
-    if (!Array.isArray(EVENTOS) || EVENTOS.length === 0) {
-      return 'O arquivo <strong>dados/cenas.js</strong> não define os eventos ' +
-             'de campanha (<em>EVENTOS</em>).';
+    /* A experiência que cada natureza rende é o único número que move a
+       campanha: sem ela, a conduta não teria consequência nenhuma. */
+    var xpRegras = (window.REGRAS && window.REGRAS.xp) || null;
+    for (var a = 0; a < Object.keys(NATUREZA).length; a++) {
+      var chaveNat = Object.keys(NATUREZA)[a];
+      if (!xpRegras || typeof xpRegras[chaveNat] !== 'number') {
+        return 'O arquivo <strong>dados/cenas.js</strong> não define a ' +
+               'experiência da conduta <em>' + escapar(chaveNat) +
+               '</em> (<em>REGRAS.xp</em>).';
+      }
     }
     for (var og = 0; og < ORIGENS.length; og++) {
       var org = ORIGENS[og];
-      for (var a = 0; a < ATRIBUTOS.length; a++) {
-        if (typeof org.atributos[ATRIBUTOS[a].chave] !== 'number') {
-          return 'A origem <em>' + escapar(org.nome) + '</em> não define o ' +
-                 'atributo <em>' + escapar(ATRIBUTOS[a].chave) + '</em>.';
-        }
-      }
-    }
-    for (var e = 0; e < EVENTOS.length; e++) {
-      var ev = EVENTOS[e];
-      if (!ev.abordagens || ev.abordagens.length === 0) {
-        return 'O evento <em>' + escapar(ev.id) + '</em> não oferece abordagens.';
-      }
-      for (var b = 0; b < ev.abordagens.length; b++) {
-        var ab2 = ev.abordagens[b];
-        if (!window.RPG.atributoDe(ab2.atributo)) {
-          return 'A abordagem <em>' + escapar(ab2.id) + '</em> cobra o atributo ' +
-                 '<em>' + escapar(ab2.atributo) + '</em>, que não existe em ' +
-                 '<strong>ATRIBUTOS</strong>.';
-        }
-        var faixas = ['critico', 'sucesso', 'falha', 'desastre'];
-        for (var t = 0; t < faixas.length; t++) {
-          if (!ab2.resultados || !ab2.resultados[faixas[t]]) {
-            return 'A abordagem <em>' + escapar(ab2.id) + '</em> não define o ' +
-                   'resultado <em>' + faixas[t] + '</em>.';
-          }
-        }
+      if (typeof org.nome !== 'string' || typeof org.descricao !== 'string' ||
+          typeof org.lema !== 'string') {
+        return 'A origem de número ' + (og + 1) + ' em ' +
+               '<strong>dados/cenas.js</strong> está incompleta. Cada origem ' +
+               'precisa de <em>nome</em>, <em>descricao</em> e <em>lema</em>.';
       }
     }
     return null;
@@ -1818,7 +1499,6 @@
     faseAtual: faseAtual,
     situacoesDaFase: situacoesDaFase,
     cenaAtual: cenaAtual,
-    eventoDaFase: eventoDaFase,
     opcaoDe: opcaoDe,
     escolhaDe: escolhaDe,
     ilicitoDaFase: ilicitoDaFase,
@@ -1831,13 +1511,7 @@
     abrirCriacao: abrirCriacao,
     escolherAvatar: escolherAvatar,
     escolherOrigem: escolherOrigem,
-    comecar: comecarCampanha,
-    trocarPersonagem: trocarPersonagem,
     abrirFase: abrirFase,
-    escolherAbordagem: escolherAbordagem,
-    rolar: confirmarRolagem,
-    revelar: revelarEvento,       /* pula a animação e fecha o evento */
-    aoDia: aoDiaDaEleicao,
     decidir: decidir,
     avancar: avancar,
     aposJulgamento: aposJulgamento,

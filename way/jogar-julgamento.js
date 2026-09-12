@@ -125,24 +125,17 @@ function opcao(natureza) {
   return lista.length ? lista[0].id : null;
 }
 
-/* O evento de abertura da campanha, resolvido com o dado do próprio jogo: o
-   que interessa aqui é chegar à juíza com a conduta que o plano manda. */
-function passarEvento() {
-  var ev = JOGO.estado.evento;
-  if (!ev) return;
-  JOGO.escolherAbordagem(ev.evento.abordagens[0].id);
-  JOGO.rolar();
-  JOGO.revelar();                         /* pula a espera da animação */
-  JOGO.aoDia();
-}
-
-/* Uma carreira nova, até a primeira circunstância da fase 1. */
+/* Uma carreira nova, até a primeira circunstância da fase 1. A escolha da
+   história leva direto ao dia da eleição: não há evento de abertura nem dado
+   entre a criação do personagem e a primeira conduta. */
 function comecarCarreira() {
   JOGO.iniciar();
+  JOGO.abrirCriacao();                    /* a capa sai para a criação */
   JOGO.escolherAvatar(AVATARES[0].id);
   JOGO.escolherOrigem(ORIGENS[0].id);
-  JOGO.comecar();
-  passarEvento();
+  conferir(JOGO.estado.tela === 'cena',
+    'Depois da história o jogo foi para "' + JOGO.estado.tela +
+    '", e devia ir direto para a circunstância.');
 }
 
 /* Decide as circunstâncias da fase corrente, uma a uma, e para na juíza. */
@@ -169,7 +162,6 @@ function chegarAoJulgamento(indice, plano) {
     JOGO.aposJulgamento();                /* deferida: vai à urna */
     JOGO.seguir();
     JOGO.proximaFase();
-    passarEvento();
     decidirCircunstancias(plano.f);
   }
 
@@ -177,13 +169,14 @@ function chegarAoJulgamento(indice, plano) {
 }
 
 /* --- Os planos de escolha, por fase ---------------------------------------
-   Cada plano declara quantos ilícitos produz. A fase 2 tem uma conduta ilícita
-   a mais por circunstância, e por isso comporta um plano a mais: o de dois
-   ilícitos, que já é maioria contra dois atos lícitos. */
+   Cada plano declara quantos ilícitos produz. O limite é um, e por isso os
+   planos que importam são três: nenhum ilícito, exatamente um — o último que
+   ainda concorre —, e dois, o primeiro que não concorre. */
 var PLANOS = [
   [
     { nome: 'tudo conforme', n: 0, f: function () { return 'conforme'; } },
     { nome: 'um ilícito',    n: 1, f: function (i) { return i === 0 ? 'ilicito' : 'conforme'; } },
+    { nome: 'dois ilícitos', n: 2, f: function (i) { return i < 2 ? 'ilicito' : 'conforme'; } },
     { nome: 'tudo ilícito',  n: 3, f: function () { return 'ilicito'; } }
   ],
   [
@@ -216,23 +209,36 @@ FASES.forEach(function (fase, indice) {
       onde + ': o rótulo do veredito não aparece na tela.');
     conferir(html.indexOf(indeferida ? 'data-veredito="deferida"' : 'data-veredito="indeferida"') === -1,
       onde + ': a tela traz os dois vereditos ao mesmo tempo.');
-    conferir(html.indexOf('deferida com advertência') === -1,
-      onde + ': a tela ainda diz "deferida com advertência" — o veredito é ' +
-      'binário, e a advertência é registro, não veredito.');
+    /* A ADVERTÊNCIA NÃO É UM TERCEIRO VEREDITO. Ela é o registro de um ilícito
+       numa candidatura que passou, e a tela não pode apresentá-la como um
+       resultado à parte. */
+    conferir(html.indexOf('data-veredito="advertencia"') === -1,
+      onde + ': a tela inventou um terceiro veredito para a advertência.');
 
-    /* A CONTA À VISTA: os dois números, e a regra escrita. */
-    conferir(html.indexOf('>' + l + '<span class="juiza__conta-rotulo"> atos lícitos') !== -1,
-      onde + ': a tela não mostra os ' + l + ' atos lícitos.');
-    conferir(html.indexOf('>' + n + '<span class="juiza__conta-rotulo"> atos ilícitos') !== -1,
-      onde + ': a tela não mostra os ' + n + ' atos ilícitos.');
+    /* A CONTA À VISTA: o número de ilícitos, o total de circunstâncias e o
+       limite, que é o que o jogador precisa conferir. */
+    var atosFase = JOGO.situacoesDaFase(indice).length;
+    conferir(html.indexOf('>' + n + '<span class="juiza__conta-rotulo">' +
+      (n === 1 ? ' ilícito' : ' ilícitos') + '</span>') !== -1,
+      onde + ': a tela não mostra os ' + n + ' ilícitos.');
+    conferir(html.indexOf('>' + atosFase +
+      '<span class="juiza__conta-rotulo"> circunstâncias</span>') !== -1,
+      onde + ': a tela não mostra as ' + atosFase + ' circunstâncias.');
+    conferir(html.indexOf('o limite é 1 ilícito') !== -1,
+      onde + ': a tela não escreve o limite de um ilícito.');
     conferir(html.indexOf(JUIZA.regra.replace(/&/g, '&amp;')) !== -1,
       onde + ': a regra do veredito não está escrita na tela.');
-    conferir(html.indexOf('a candidatura tolera') === -1,
-      onde + ': a tela ainda fala em tolerância — a regra é a maioria dos atos.');
+    /* Os atos lícitos não decidem mais nada: se a tela voltasse a exibi-los
+       como parte da conta, estaria ensinando a regra antiga. */
+    conferir(html.indexOf('atos lícitos') === -1,
+      onde + ': a tela voltou a contar os atos lícitos — a regra é o número ' +
+      'de ilícitos.');
+    conferir(html.indexOf('a maioria') === -1,
+      onde + ': a tela ainda fala em maioria — a regra é o número de ilícitos.');
 
     /* O TEXTO ESCOLHIDO, e o que ele diz. */
     var bloco = n === 0 ? JUIZA.semIlicito
-              : (indeferida ? JUIZA.maioriaIlicita : JUIZA.umIlicito);
+              : (indeferida ? JUIZA.doisOuMaisIlicitos : JUIZA.umIlicito);
     conferir(html.indexOf(bloco.titulo.replace(/&/g, '&amp;')) !== -1,
       onde + ': a tela não traz o título do veredito previsto.');
 

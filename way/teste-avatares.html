@@ -58,8 +58,8 @@
   }
 
   var id = (location.search.match(/avatar=(av\d+)/) || [])[1] || 'av2';
-  /* `?ate=N` para o piloto no passo N — é o que permite fotografar a tela do
-     evento parada, antes da escolha, e logo depois dela. */
+  /* `?ate=N` para o piloto no passo N — é o que permite fotografar cada tela
+     da criação, parada, na ordem em que o jogador a vê. */
   var ate = parseInt((location.search.match(/ate=(\d+)/) || [])[1], 10);
   /* `?capa=clique` sai da capa pelo toque; sem ele, sai pela tecla. Os dois
      caminhos precisam levar à mesma tela. */
@@ -78,17 +78,13 @@
   }
 
   /* Cada passo espera o anterior: as telas são trocadas por innerHTML, e
-     clicar antes de a tela existir não faria nada. `#btn-rolar` só existe
-     depois de a abordagem ser escolhida, e `#btn-ao-dia` só depois de o d20
-     terminar de animar — daí as esperas longas do fim. */
+     clicar antes de a tela existir não faria nada. A história é a última
+     escolha antes do dia da eleição: da origem o jogo vai direto à primeira
+     circunstância. */
   var passos = [
     [sairDaCapa, 60],
     [function () { return clicar('[data-avatar="' + id + '"]'); }, 60],
-    [function () { return clicar('[data-origem]'); }, 60],
-    [function () { return clicar('#btn-comecar'); }, 60],
-    [function () { return clicar('[data-abordagem]'); }, 60],
-    [function () { return clicar('#btn-rolar'); }, 2200],
-    [function () { return clicar('#btn-ao-dia'); }, 60]
+    [function () { return clicar('[data-origem]'); }, 60]
   ];
   if (!isNaN(ate)) passos = passos.slice(0, ate);
 

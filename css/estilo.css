@@ -912,8 +912,9 @@ p[tabindex="-1"]:focus-visible {
 .indice[data-estado="advertencia"] .indice__barra i { background: var(--observar); }
 .indice[data-estado="impugnacao"]  .indice__barra i { background: var(--crime); }
 
-/* As marcas mostram quantos ilícitos cabem antes da impugnação: uma casa a
-   mais do que a tolerância, porque é essa a que derruba a candidatura. */
+/* As marcas contam os ilícitos da candidatura: uma casa por circunstância,
+   acesa a cada ilícito. A casa do LIMITE — a segunda — é marcada por um traço,
+   e é ela que o jogador precisa ver antes de cruzá-la. */
 .indice__marcas { display: flex; gap: 4px; flex: 0 0 auto; }
 .indice__marca {
   width: 9px; height: 9px;
@@ -923,6 +924,19 @@ p[tabindex="-1"]:focus-visible {
 }
 .indice[data-estado="advertencia"] .indice__marca--cheia { background: var(--observar); }
 .indice[data-estado="impugnacao"]  .indice__marca--cheia { background: var(--crime); }
+
+.indice__marca--limite { position: relative; margin-left: 10px; }
+.indice__marca--limite::before {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--texto-suave);
+  opacity: .45;
+}
 
 .indice__valor {
   font-size: 1.25rem;
@@ -1250,12 +1264,15 @@ p[tabindex="-1"]:focus-visible {
 }
 
 /* =============================================================================
- * CAMADA DE RPG
+ * A CAMPANHA — a ficha e a experiência
  * -----------------------------------------------------------------------------
  * Tudo o que segue pertence à campanha, não ao julgamento. A separação visual
  * é intencional: o que é jurídico usa o azul da marca; o que é campanha usa o
  * violeta de --rpg. Um jogador deve conseguir dizer, de relance, o que é
  * regra de direito e o que é estado do personagem.
+ *
+ * A campanha tem um número só — a experiência —, e por isso há uma barra só:
+ * a de --rpg, que a ficha desenha ao lado do nível.
  * ========================================================================== */
 
 
@@ -1277,73 +1294,13 @@ p[tabindex="-1"]:focus-visible {
 }
 .barra--xp i { background: var(--marca-clara); }
 
-/* A legitimidade é o único recurso que muda de cor: ela é o termômetro da
-   campanha, e um número baixo precisa ser legível como problema. */
-.rec[data-nivel="alto"] .barra i { background: var(--permitido); }
-.rec[data-nivel="medio"] .barra i { background: var(--observar); }
-.rec[data-nivel="baixo"] .barra i { background: var(--crime); }
-
-/* ---- Atributos -------------------------------------------------------- */
-.atr {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 9px 4px 7px;
-  border-radius: 999px;
-  background: var(--superficie-2);
-  border: 1px solid var(--borda);
-  font-size: .78rem;
-  font-weight: 650;
-  white-space: nowrap;
-}
-.atr__icone { color: var(--rpg); font-size: .92rem; line-height: 1; }
-.atr__texto { display: flex; flex-direction: column; min-width: 0; }
-.atr__nome { font-size: .78rem; }
-.atr__resumo { font-size: .8rem; font-weight: 500; color: var(--texto-suave); white-space: normal; }
-.atr__valor {
-  font-variant-numeric: tabular-nums;
-  background: var(--rpg);
-  color: var(--rpg-texto);
-  border-radius: 999px;
-  min-width: 21px;
-  text-align: center;
-  padding: 1px 6px;
-  font-size: .78rem;
-}
-.atr--longo {
-  display: flex;
-  gap: 11px;
-  padding: 12px 14px;
-  border-radius: var(--raio-p);
-  white-space: normal;
-  align-items: flex-start;
-}
-.atr--longo .atr__icone { font-size: 1.05rem; margin-top: 1px; }
-.atr--longo .atr__texto { flex: 1 1 auto; gap: 3px; }
-.atr--longo .atr__nome { font-weight: 750; font-size: .95rem; color: var(--texto); }
-.atr--longo .atr__valor { align-self: center; font-size: .95rem; padding: 4px 11px; }
-
-/* ---- Recursos --------------------------------------------------------- */
-.rec {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: .78rem;
-  font-weight: 650;
-  white-space: nowrap;
-}
-.rec--largo { flex: 1 1 170px; min-width: 0; }
-.rec--largo .barra { flex: 1 1 auto; min-width: 54px; }
-.rec__nome { color: var(--texto-suave); }
-.rec__valor { font-variant-numeric: tabular-nums; }
-.rec[data-alerta="sim"] .rec__valor { color: var(--crime); }
-
-/* ---- Resumo que acompanha a partida (cabeçalho) ----------------------- */
+/* ---- Resumo que acompanha a partida (cabeçalho) -----------------------
+   Duas colunas, e não quatro: a ficha perdeu os atributos e os recursos, e o
+   que sobrou dela é quem o candidato é e em que nível ele está. */
 .ficha {
   display: grid;
-  grid-template-columns:
-    minmax(0, 1.15fr) minmax(0, 1.05fr) minmax(0, 1.5fr) minmax(0, 1.35fr);
-  gap: 12px 20px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px 24px;
   align-items: center;
   margin-top: 14px;
   padding: 12px 16px;
@@ -1386,18 +1343,6 @@ p[tabindex="-1"]:focus-visible {
   color: var(--texto-suave);
   font-variant-numeric: tabular-nums;
 }
-
-.ficha__atributos {
-  list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  min-width: 0;
-}
-
-.ficha__recursos { display: flex; flex-wrap: wrap; gap: 8px 16px; min-width: 0; }
 
 /* ---- Criação: passos, origens ----------------------------------------- */
 .passo {
@@ -1446,35 +1391,7 @@ p[tabindex="-1"]:focus-visible {
   border-left: 3px solid var(--rpg-borda);
   padding-left: 10px;
 }
-
-.origem__atributos {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 7px;
-  margin-top: auto;
-  padding-top: 4px;
-}
-.origem__atr {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: .74rem;
-  font-weight: 700;
-  color: var(--texto-suave);
-  background: var(--superficie);
-  border: 1px solid var(--borda);
-  border-radius: 999px;
-  padding: 2px 8px;
-}
 .origem__atr-valor { color: var(--rpg); font-variant-numeric: tabular-nums; }
-.origem__caixa {
-  margin-left: auto;
-  font-size: .78rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  color: var(--texto);
-}
 
 .origem__tecla,
 .abordagem__tecla {
@@ -1520,6 +1437,14 @@ p[tabindex="-1"]:focus-visible {
 .ficha-cheia__quem { flex: 1 1 190px; min-width: 0; }
 .ficha-cheia__nome { font-size: 1.3rem; font-weight: 850; margin-bottom: 2px; }
 .ficha-cheia__origem { font-size: .92rem; font-weight: 700; color: var(--rpg); }
+.ficha-cheia__cargo {
+  font-size: .78rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+  margin-top: 6px;
+}
 .ficha-cheia__lema {
   font-size: .88rem;
   font-style: italic;
@@ -1550,25 +1475,6 @@ p[tabindex="-1"]:focus-visible {
   margin-top: 6px;
 }
 .ficha-cheia__nota { font-size: .82rem; font-style: italic; color: var(--texto-suave); margin-top: 6px; }
-
-.ficha-cheia__recursos {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 26px;
-  padding: 15px 0;
-  border-top: 1px solid var(--borda);
-  border-bottom: 1px solid var(--borda);
-  margin-bottom: 18px;
-}
-
-.ficha-cheia__atributos {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
 
 /* ---- Inventário do dia ------------------------------------------------ */
 .inventario {
@@ -1613,196 +1519,6 @@ p[tabindex="-1"]:focus-visible {
 .item__nome { font-size: .85rem; font-weight: 700; }
 .item__nota { font-size: .76rem; color: var(--texto-suave); }
 
-/* ---- Evento de campanha ----------------------------------------------- */
-.evento {
-  max-width: 780px;
-  margin: 0 auto;
-  background: var(--superficie);
-  border: 1px solid var(--borda);
-  border-top: 5px solid var(--rpg);
-  border-radius: var(--raio);
-  box-shadow: var(--sombra-alta);
-  padding: 26px 28px 28px;
-}
-
-/* A imagem do evento: as duas conduções lado a lado, numeradas na mesma
-   ordem das teclas e dos botões logo abaixo. */
-.evento__figura {
-  margin: 18px 0 4px;
-  border-radius: var(--raio);
-  overflow: hidden;
-  background: var(--superficie);
-  border: 1px solid var(--borda);
-  box-shadow: var(--sombra);
-}
-.evento__figura svg { display: block; width: 100%; height: auto; }
-
-.mestre {
-  background: var(--rpg-bg);
-  border-left: 4px solid var(--rpg);
-  border-radius: 0 var(--raio-p) var(--raio-p) 0;
-  padding: 14px 17px;
-  margin: 16px 0 20px;
-}
-.mestre__rotulo {
-  font-size: .72rem;
-  font-weight: 800;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: var(--rpg);
-  margin-bottom: 6px;
-}
-.mestre__texto { font-size: .98rem; font-style: italic; }
-
-.evento__pergunta {
-  font-weight: 700;
-  font-size: .95rem;
-  margin: 22px 0 12px;
-}
-.evento__rolando {
-  text-align: center;
-  font-weight: 700;
-  color: var(--texto-suave);
-  margin: 24px 0 14px;
-}
-
-.abordagens { display: grid; gap: 10px; }
-
-.abordagem {
-  display: grid;
-  gap: 8px;
-  text-align: left;
-  width: 100%;
-  min-height: var(--toque);
-  padding: 14px 17px;
-  background: var(--superficie-2);
-  border: 2px solid var(--borda);
-  border-radius: var(--raio-p);
-  cursor: pointer;
-  transition: border-color .16s, background .16s, transform .16s, box-shadow .16s;
-}
-.abordagem:hover {
-  transform: translateY(-2px);
-  border-color: var(--rpg);
-  background: var(--rpg-bg);
-  box-shadow: var(--sombra);
-}
-.abordagem__topo {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-.abordagem__atributo {
-  font-size: .76rem;
-  font-weight: 800;
-  color: var(--rpg);
-  letter-spacing: .04em;
-}
-.abordagem__cd {
-  font-size: .74rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  color: var(--texto-suave);
-  border: 1px solid var(--borda);
-  border-radius: 999px;
-  padding: 2px 9px;
-  background: var(--superficie);
-}
-.abordagem__nome { font-size: 1rem; font-weight: 700; }
-.abordagem__tecla { justify-self: end; }
-
-.declaracao {
-  background: var(--superficie-2);
-  border: 1px solid var(--borda);
-  border-radius: var(--raio-p);
-  padding: 16px 18px;
-  margin-top: 18px;
-}
-.declaracao__rotulo {
-  font-size: .72rem;
-  font-weight: 800;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: var(--rpg);
-  margin-bottom: 6px;
-}
-.declaracao__nome { font-size: 1.02rem; font-weight: 750; margin-bottom: 8px; }
-.declaracao__conta { font-size: .88rem; color: var(--texto-suave); }
-
-.botao--dado { margin-top: 18px; }
-
-/* ---- O dado ----------------------------------------------------------- */
-.dado-palco { display: flex; justify-content: center; margin: 20px 0 12px; }
-
-.dado {
-  width: 120px;
-  height: 120px;
-  display: block;
-  animation: tomba .6s cubic-bezier(.22,.8,.3,1) both;
-}
-@keyframes tomba {
-  0%   { transform: rotate(-140deg) scale(.68); opacity: 0; }
-  60%  { transform: rotate(14deg) scale(1.07);  opacity: 1; }
-  100% { transform: rotate(0deg) scale(1); }
-}
-.dado[data-estado="rolando"] { animation: gira .9s linear infinite; }
-@keyframes gira {
-  0%   { transform: rotate(0deg)   scale(.92); }
-  50%  { transform: rotate(180deg) scale(1.04); }
-  100% { transform: rotate(360deg) scale(.92); }
-}
-
-.dado__face  { fill: var(--superficie-2); stroke: var(--borda); stroke-width: 2.5; }
-.dado__linha { fill: none; stroke: var(--borda); stroke-width: 2.5; stroke-linejoin: round; }
-.dado__numero {
-  font-family: 'Segoe UI', system-ui, -apple-system, Helvetica, Arial, sans-serif;
-  font-size: 36px;
-  font-weight: 850;
-  fill: var(--texto);
-}
-
-.dado[data-estado="critico"]  .dado__face,
-.dado[data-estado="sucesso"]  .dado__face  { fill: var(--permitido-bg); stroke: var(--permitido); }
-.dado[data-estado="critico"]  .dado__linha,
-.dado[data-estado="sucesso"]  .dado__linha { stroke: var(--permitido); }
-.dado[data-estado="critico"]  .dado__numero,
-.dado[data-estado="sucesso"]  .dado__numero { fill: var(--permitido); }
-
-.dado[data-estado="falha"]    .dado__face  { fill: var(--observar-bg); stroke: var(--observar); }
-.dado[data-estado="falha"]    .dado__linha { stroke: var(--observar); }
-.dado[data-estado="falha"]    .dado__numero { fill: var(--observar); }
-
-.dado[data-estado="desastre"] .dado__face  { fill: var(--crime-bg); stroke: var(--crime); }
-.dado[data-estado="desastre"] .dado__linha { stroke: var(--crime); }
-.dado[data-estado="desastre"] .dado__numero { fill: var(--crime); }
-
-.rolagem__conta {
-  text-align: center;
-  font-size: .95rem;
-  color: var(--texto-suave);
-  margin-bottom: 6px;
-}
-.rolagem__conta b { color: var(--texto); }
-.rolagem__faixa {
-  text-align: center;
-  font-size: .78rem;
-  font-weight: 800;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  margin-bottom: 16px;
-}
-.rolagem__faixa[data-faixa="critico"],
-.rolagem__faixa[data-faixa="sucesso"] { color: var(--permitido); }
-.rolagem__faixa[data-faixa="falha"]   { color: var(--observar); }
-.rolagem__faixa[data-faixa="desastre"]{ color: var(--crime); }
-
-.rolagem__texto {
-  font-size: 1.02rem;
-  margin-bottom: 16px;
-}
-.rolagem__texto + .efeitos { margin-bottom: 20px; }
-
 /* ---- Efeitos aplicados ------------------------------------------------ */
 .efeitos {
   display: flex;
@@ -1821,8 +1537,10 @@ p[tabindex="-1"]:focus-visible {
   border: 1px solid var(--borda);
 }
 .efeito--xp    { color: var(--marca-clara); border-color: var(--marca-clara); }
-.efeito--leg   { color: var(--permitido);   border-color: var(--permitido); }
-.efeito--caixa { color: var(--observar);    border-color: var(--observar); }
+/* A experiência que não se move. A conduta ilícita custa, mas a campanha não
+   fica negativa: quando não há mais o que devolver, o chip diz "0 XP" em tom
+   neutro, e não em vermelho — não houve prejuízo a mostrar. */
+.efeito[data-sinal="zero"] { color: var(--texto-suave); border-color: var(--borda); }
 
 /* Recurso bom perdido não é notícia boa: o sinal manda na cor. */
 .efeito[data-sinal="menos"] { color: var(--crime); border-color: var(--crime); }
@@ -1876,28 +1594,15 @@ p[tabindex="-1"]:focus-visible {
 .conquista__nome { font-size: .97rem; font-weight: 800; color: var(--rpg); }
 .conquista__nota { font-size: .88rem; color: var(--texto-suave); }
 
-/* ---- Responsivo da camada de RPG -------------------------------------- */
-@media (max-width: 1000px) {
-  .ficha { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  .ficha__atributos,
-  .ficha__recursos { grid-column: 1 / -1; }
-}
-
+/* ---- Responsivo da campanha ------------------------------------------- */
 @media (max-width: 700px) {
   .origens { grid-template-columns: 1fr; }
-  .ficha-cheia__atributos { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 560px) {
   .ficha { grid-template-columns: 1fr; gap: 10px; padding: 12px 13px; }
   .ficha__retrato { width: 38px; height: 38px; }
-  .ficha__atributos .atr__nome { display: none; }
-  .rec--largo { flex: 1 1 100%; }
   .ficha-cheia { padding: 18px; }
   .ficha-cheia__retrato { width: 68px; height: 68px; }
-  .evento { padding: 20px 17px 22px; }
-  .dado { width: 96px; height: 96px; }
-  .dado__numero { font-size: 30px; }
-  .abordagem__tecla,
   .origem__tecla { display: none; }
 }

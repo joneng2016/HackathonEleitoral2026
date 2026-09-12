@@ -13,9 +13,9 @@
 
 <!-- =========================================================================
      ORDEM DE CARGA — obrigatória
-       1. dados/cenas.js     conteúdo jurídico editável (US-12) + camada de RPG
+       1. dados/cenas.js     conteúdo jurídico editável (US-12)
        2. js/ilustracoes.js  ilustrações SVG (RNF-05), inclui a juíza
-       3. js/ficha.js        ficha, atributos, níveis e o d20
+       3. js/ficha.js        a experiência e os níveis do candidato
        4. js/app.js          lógica e interface
      Não há dependência externa, etapa de build, cadastro ou instalação
      (RNF-02 / US-01). Abra o arquivo direto no navegador.
@@ -55,8 +55,8 @@
   --toque:      52px;
   --largura:    1080px;
 
-  /* Camada de RPG. A cor e deliberadamente distinta da marca (azul, que
-     governa o juridico) e das tres cores de veredito: a campanha nao deve
+  /* A campanha. A cor e deliberadamente distinta da marca (azul, que governa
+     o juridico) e das tres cores de veredito: a ficha do candidato nao deve
      parecer, em momento algum, um quarto veredito. */
   --rpg:        #6d4bb8;
   --rpg-forte:  #553a94;
@@ -80,13 +80,13 @@
        aria-valuemin="0" aria-valuemax="6" aria-valuenow="0"
        aria-label="Progresso na sequência de situações"></div>
 
-  <!-- A ficha do personagem: nível, atributos, legitimidade e caixa. Mede a
-       CAMPANHA, e não a conduta — nenhum número dela entra no julgamento. -->
+  <!-- A ficha do candidato: quem ele é e em que nível está. Mede a CAMPANHA,
+       e não a conduta — nenhum número dela entra no julgamento. -->
   <div class="ficha" id="ficha" hidden></div>
 
   <!-- O índice de ilícitos: conta as condutas ilícitas da CANDIDATURA corrente
        — crimes e condutas vedadas — e é por ele, e só por ele, que a juíza
-       decide se o registro é deferido ou impugnado. -->
+       decide se o registro é deferido ou indeferido. -->
   <div class="indice" id="indice" hidden></div>
 </header>
 
