@@ -150,9 +150,16 @@ window.AVATARES = [
 /* =============================================================================
  * FASES — a carreira do candidato
  * -----------------------------------------------------------------------------
- * `tolera`: quantos ilícitos a candidatura suporta sem ser impugnada. Com
- * `tolera: 1`, UM ilícito ainda permite concorrer — a juíza o registra como
- * advertência — e DOIS impugnam a candidatura.
+ * `tolera`: quantos ilícitos a candidatura suporta antes de ser INDEFERIDA.
+ * Com `tolera: 1`, UM ilícito ainda permite concorrer — a juíza o registra no
+ * relatório — e DOIS indeferem o registro.
+ *
+ * O veredito é a maioria dos atos, e `tolera` é a declaração da fase sobre
+ * esse mesmo limite: com três circunstâncias, o limite da maioria é um. Os
+ * dois números dizem a mesma coisa, e o jogo se recusa a abrir quando
+ * discordam — quem decide é a contagem, e a declaração é conferida contra
+ * ela. Declarar a tolerância aqui é o que permite ler a fase sem abrir o
+ * app.js, e por isso ela fica.
  *
  * `iliciosPorCena`: quantas das quatro condutas de cada cena são ilícitas.
  * Cresce com o cargo: a fase 1 oferece uma conduta ilícita por cena, e a fase
@@ -893,10 +900,24 @@ window.PERGUNTAS_RESOLUCAO = [
  * A juíza não julga o jogador: julga a CANDIDATURA. Ela lê os ilícitos que o
  * índice registrou e decide se a candidatura pode concorrer.
  *
+ * A REGRA DO VEREDITO
+ * -----------------------------------------------------------------------------
+ * O veredito é a MAIORIA DOS ATOS. Cada circunstância da fase vale um ato, o
+ * ato é lícito ou ilícito, e a candidatura é:
+ *
+ *   mais atos lícitos   → DEFERIDA   (o registro passa, e ela concorre)
+ *   mais atos ilícitos  → INDEFERIDA (o registro é negado, e a fase se refaz)
+ *
+ * Não é uma soma de gravidade nem um limiar de tolerância: é uma contagem, e
+ * ela é dita ao jogador na tela do julgamento, com os dois números à vista.
+ * Com três circunstâncias por fase, a maioria sempre existe — e `tolera`, na
+ * fase, é a declaração desse mesmo limite, conferida contra a contagem.
+ *
  * O QUE O JOGO COMPRIME, E O QUE ELE NÃO PODE COMPRIMIR
  * -----------------------------------------------------------------------------
- * No jogo, DOIS ilícitos impugnam a candidatura automaticamente. Na lei, a
- * impugnação não é automática, e a diferença é grande:
+ * No jogo, a candidatura é INDEFERIDA quando a maioria dos atos é ilícita —
+ * automática e aritmeticamente, sem processo. Na lei, a impugnação não é
+ * automática, e a diferença é grande:
  *
  *   - A ação de impugnação de registro de candidatura (AIRC) tem assento no
  *     art. 3º da Lei Complementar nº 64/90, com prazo de 5 dias contados da
@@ -916,8 +937,9 @@ window.PERGUNTAS_RESOLUCAO = [
  *
  * Ou seja: um candidato que praticou a conduta, mas ainda não foi condenado
  * em decisão colegiada, não está automaticamente inelegível. O jogo comprime
- * esse caminho para caber numa tela — e declara a compressão ao jogador, na
- * nota ao pé do julgamento, em vez de ensinar que a impugnação é automática.
+ * esse caminho para caber numa tela — e declara as duas compressões ao
+ * jogador, na nota ao pé do julgamento: a de que aqui a conta basta, sem
+ * processo, e a de que o jogo não pesa a gravidade de cada ilícito.
  *
  * Os dispositivos acima são CITADOS POR REFERÊNCIA, sem transcrição entre
  * aspas, porque não foram conferidos literalmente contra o texto oficial. É a
@@ -931,8 +953,16 @@ window.JUIZA = {
     'Sobre a toga, o broche da Justiça Eleitoral. Ela abre a pasta, lê o ' +
     'relatório das condutas do dia da eleição e levanta os olhos.',
 
-  /* --- Candidatura com nenhum ilícito -------------------------------- */
+  /* A REGRA, ESCRITA PARA O JOGADOR. O veredito não pode ser uma surpresa
+     que só o resultado revela: a conta é simples, e ela é dita na tela do
+     julgamento, ao lado dos dois números que a compõem. */
+  regra:
+    'A candidatura é deferida se a maioria dos seus atos for lícita, e ' +
+    'indeferida se a maioria for ilícita. Cada circunstância vale um ato.',
+
+  /* --- Veredito: deferida, com nenhum ilícito ------------------------ */
   semIlicito: {
+    veredito: 'deferida',
     rotulo: 'Candidatura deferida',
     titulo: 'Nada há para julgar',
     fala:
@@ -944,50 +974,61 @@ window.JUIZA = {
       'A candidatura está deferida. Você concorre com os demais candidatos.'
   },
 
-  /* --- Candidatura com exatamente um ilícito ------------------------- */
+  /* --- Veredito: deferida, com um ilícito no registro -----------------
+     A maioria continua lícita, e o veredito é o mesmo — deferida. O que muda
+     é o registro, e é ele que a fala trata: não é um terceiro veredito, é a
+     mesma candidatura deferida com uma mancha a mais. */
   umIlicito: {
-    rotulo: 'Candidatura deferida com advertência',
-    titulo: 'Um ilícito: a candidatura segue, e o registro fica',
+    veredito: 'deferida',
+    rotulo: 'Candidatura deferida',
+    titulo: 'Um ilícito: a candidatura passa, e o registro fica',
     fala:
-      'Há uma conduta ilícita no relatório, e ela não passa em branco. A ' +
-      'candidatura concorre — mas o registro do que aconteceu fica, e ele ' +
-      'não desaparece porque a eleição deu certo.' +
+      'A maioria dos seus atos foi lícita, e é a maioria que decide: a ' +
+      'candidatura concorre. Mas há uma conduta ilícita no relatório, e ela ' +
+      'não passa em branco — o registro do que aconteceu fica, e ele não ' +
+      'desaparece porque a eleição deu certo.' +
       '\n\n' +
       'Não é preciso mais do que uma vez para que uma campanha mude de ' +
       'natureza. O que você faz com o que ficou registrado é o que decide o ' +
       'resto: a mesma conduta repetida deixa de ser um acidente e passa a ser ' +
-      'um método. A candidatura está deferida, com advertência.'
+      'um método.'
   },
 
-  /* --- Candidatura com dois ou mais ilícitos ------------------------- */
-  doisOuMais: {
-    rotulo: 'Candidatura impugnada',
-    titulo: 'São ilícitos demais para uma candidatura só',
+  /* --- Veredito: indeferida, com a maioria ilícita ------------------- */
+  maioriaIlicita: {
+    veredito: 'indeferida',
+    rotulo: 'Candidatura indeferida',
+    titulo: 'A maioria dos atos foi ilícita',
     fala:
-      'O relatório traz mais de uma conduta ilícita no mesmo dia de eleição. ' +
-      'Não foi um passo em falso: foram decisões repetidas, cada uma delas ' +
-      'tomada por alguém que já sabia o que a lei dizia.' +
+      'A conta está fechada, e ela não me deixa alternativa: a maioria dos ' +
+      'atos desta candidatura é ilícita. Não foi um passo em falso — foi uma ' +
+      'campanha em que o ilícito deixou de ser exceção e passou a ser o ' +
+      'método, decisão após decisão, cada uma delas tomada por alguém que já ' +
+      'sabia o que a lei dizia.' +
       '\n\n' +
       'Não é o número que decide a gravidade — é o que o número revela. ' +
-      'Impugno a candidatura. Você não concorre nesta eleição.' +
+      'Indefiro o registro. Você não concorre nesta eleição.' +
       '\n\n' +
       'E é aqui que a lição deste jogo se fecha: o que estava em disputa ' +
-      'nunca foi o cargo. Uma candidatura impugnada ensina mais sobre o ' +
+      'nunca foi o cargo. Uma candidatura indeferida ensina mais sobre o ' +
       'candidato do que qualquer votação ensinaria.'
   },
 
   /* --- Nota de honestidade intelectual ------------------------------- */
   nota:
-    'Nota do jogo: aqui, mais de um ilícito impugna a candidatura ' +
-    'automaticamente. Na lei, essa automaticidade não existe. A ação de ' +
-    'impugnação de registro de candidatura está no art. 3º da Lei ' +
+    'Nota do jogo: aqui, a conta decide — maioria de atos ilícitos, registro ' +
+    'indeferido; maioria de atos lícitos, registro deferido. Duas compressões ' +
+    'estão nessa frase. A primeira: na lei, essa automaticidade não existe. A ' +
+    'ação de impugnação de registro de candidatura está no art. 3º da Lei ' +
     'Complementar nº 64/90, com prazo e legitimados próprios, e a notícia de ' +
     'inelegibilidade por qualquer cidadão está no art. 97, § 3º, do Código ' +
     'Eleitoral. A inelegibilidade por crime eleitoral (art. 1º, I, "e", da ' +
     'LC 64/90) exige CONDENAÇÃO em decisão colegiada ou transitada em ' +
     'julgado — não basta ter praticado a conduta. Os efeitos do art. 15 da ' +
-    'LC 64/90 só vêm depois disso. O jogo comprime o caminho para caber numa ' +
-    'tela; o caminho real tem processo, contraditório e prazo.'
+    'LC 64/90 só vêm depois disso. A segunda: o jogo conta atos e não pesa ' +
+    'gravidades — um ilícito de cada lado vale o mesmo, e a lei não funciona ' +
+    'assim. O jogo comprime o caminho para caber numa tela; o caminho real ' +
+    'tem processo, contraditório e prazo.'
 };
 
 /* =============================================================================
