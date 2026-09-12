@@ -382,140 +382,221 @@
   /* ---------------------------------------------------------------------
    * A JUÍZA DO TRE — o julgamento da candidatura
    * ---------------------------------------------------------------------
-   * Desenhada em perfil, de frente para a mesa, porque é o perfil que torna a
-   * cadeira de rodas imediatamente legível — e a cadeira é parte de quem ela
-   * é, não um detalhe a esconder atrás de uma bancada.
+   * Desenhada de frente, olhando quem olha o jogo: quem julga é ela, e a
+   * figura encara o jogador. A cadeira de rodas é parte de quem ela é, não um
+   * detalhe a esconder — e de frente ela continua legível, pelas duas rodas
+   * ladeando o corpo, pelos rodízios e pela tábua do apoio de pé. A bancada
+   * fica à frente dela (ver cenaJuiza), e dela tapa só a faixa do tampo: por
+   * baixo da mesa a cadeira continua à vista. A peruca, a toga preta e o
+   * martelo são o traje do ofício; a cadeira, as orelhas e os brincos são
+   * quem ela é. Trocar o traje não pode custar nenhum dos dois.
    *
    * A toga e o jabot seguem o mesmo traço das outras figuras (RNF-05): se ela
    * fosse desenhada num registro gráfico diferente do resto do jogo, a
    * autoridade da cena viraria um corpo estranho.
+   *
+   * A toga é preta de verdade (#15171e), e não o azul-escuro de antes. No
+   * preto, o vinco da dobra é a luz que bate nela e não a sombra que ela faz:
+   * por isso `togaLuz` é CLARO, ao contrário do `*Esc` das outras figuras.
+   * Com vinco escuro sobre preto a toga vira uma mancha sem forma. A canela
+   * sai em `COR.calca` pelo mesmo motivo: perna preta sob toga preta some.
    * ------------------------------------------------------------------ */
   var JUIZA = {
-    pele:   '#5f3b23',
-    cabelo: '#161616',
-    toga:   '#232a3d',
-    togaEsc:'#1a2030',
-    jabot:  '#fbf9f2',
-    madeira:'#8a6a3a',
+    pele:    '#5f3b23',
+    toga:    '#15171e',
+    togaLuz: '#3c4456',
+    peruca:  '#f2eee2',
+    perucaEsc:'#cfc7b0',
+    jabot:   '#fbf9f2',
+    madeira: '#8a6a3a',
+    madeiraLuz:'#a5834f',
     madeiraEsc:'#6d5230'
   };
 
   /* ---------------------------------------------------------------------
-   * A CADEIRA DE RODAS — desenhada em duas partes
+   * A CADEIRA DE RODAS — de frente, em duas partes
    * ---------------------------------------------------------------------
    * A parte de trás é desenhada ANTES da juíza e a da frente DEPOIS. Sem essa
    * separação, ou a roda cobre o colo dela, ou o assento some atrás do corpo:
    * nos dois casos a cadeira deixa de ser legível como cadeira, que é
    * exatamente o que a cena não pode perder.
+   *
+   * De frente a roda é uma ELIPSE estreita, e não um círculo: é assim que uma
+   * roda se vê de frente. Por isso não há raios — de frente eles não
+   * apareceriam, e desenhá-los faria a roda voltar a parecer de perfil. Quem
+   * segura a leitura da cadeira são as duas rodas ladeando o corpo, os
+   * empurradores atrás dos ombros, os apoios de braço e a tábua do apoio de
+   * pé, com os dois rodízios à frente.
    * ------------------------------------------------------------------ */
   var ARO = '#2b3648', QUADRO = '#44536b', QUADRO_CLARO = '#5b6b85';
 
-  /* Roda principal, em perfil. (0,0) é o centro da roda. */
+  /* Roda principal, de frente. (0,0) é o centro da roda; o chão fica 46
+     abaixo dele. Pneu, aro interno e cubo. */
   function rodaPrincipal(cx, cy) {
-    var raios = '';
-    for (var i = 0; i < 8; i++) {
-      var ang = (Math.PI * 2 / 8) * i;
-      raios += '<line x1="' + (Math.cos(ang) * 7).toFixed(1) + '" y1="' +
-                        (Math.sin(ang) * 7).toFixed(1) + '" x2="' +
-                        (Math.cos(ang) * 40).toFixed(1) + '" y2="' +
-                        (Math.sin(ang) * 40).toFixed(1) + '"/>';
-    }
     return '' +
       '<g transform="translate(' + cx + ',' + cy + ')">' +
-        '<g stroke="' + QUADRO_CLARO + '" stroke-width="2">' + raios + '</g>' +
-        '<circle r="48" fill="none" stroke="' + ARO + '" stroke-width="6"/>' +
-        '<circle r="41" fill="none" stroke="' + QUADRO_CLARO + '" stroke-width="2"/>' +
-        '<circle r="7" fill="' + ARO + '"/>' +
-        '<circle r="3" fill="' + QUADRO_CLARO + '"/>' +
+        '<ellipse rx="15" ry="46" fill="none" stroke="' + ARO + '" stroke-width="6"/>' +
+        '<ellipse rx="11" ry="41" fill="none" stroke="' + QUADRO_CLARO + '" stroke-width="2"/>' +
+        '<ellipse rx="4" ry="6.5" fill="' + ARO + '"/>' +
       '</g>';
   }
 
-  /* O que fica atrás da juíza: encosto, apoio de braço e roda do lado oposto. */
+  /* O que fica atrás da juíza: as duas rodas, o quadro, o assento e o encosto.
+     Não há empurradores: de frente eles ficam atrás dos ombros e, desenhados,
+     viravam duas borrachas escuras coladas na peruca. */
   function cadeiraAtras() {
     return '' +
-      /* roda do lado oposto, esmaecida pela distância */
-      '<circle cx="16" cy="-48" r="48" fill="none" stroke="' + ARO + '" ' +
-        'stroke-width="6" opacity=".25"/>' +
-      /* encosto */
-      '<rect x="-46" y="-152" width="10" height="64" rx="4" fill="' + QUADRO + '"/>' +
-      /* apoio de braço, atrás do braço dela */
-      '<rect x="-38" y="-132" width="64" height="7" rx="3" fill="' + QUADRO_CLARO + '"/>' +
-      '<rect x="-38" y="-132" width="7" height="40" rx="3" fill="' + QUADRO + '"/>' +
-      /* tubo traseiro */
-      '<line x1="-36" y1="-92" x2="-4" y2="-48" stroke="' + QUADRO + '" ' +
-        'stroke-width="7" stroke-linecap="round"/>';
+      /* o quadro, subindo de cada roda até o assento */
+      '<line x1="-50" y1="-46" x2="-30" y2="-90" stroke="' + QUADRO + '" ' +
+        'stroke-width="7" stroke-linecap="round"/>' +
+      '<line x1="50" y1="-46" x2="30" y2="-90" stroke="' + QUADRO + '" ' +
+        'stroke-width="7" stroke-linecap="round"/>' +
+      rodaPrincipal(-50, -46) +
+      rodaPrincipal(50, -46) +
+
+      /* os apoios de braço: vão na camada de trás, e não na da frente, porque
+         os braços dela passam POR CIMA deles. Na camada da frente o tubo
+         cortaria o antebraço apoiado no meio. */
+      '<rect x="-48" y="-146" width="24" height="8" rx="4" fill="' + QUADRO_CLARO + '"/>' +
+      '<rect x="24" y="-146" width="24" height="8" rx="4" fill="' + QUADRO_CLARO + '"/>' +
+      '<rect x="-46" y="-142" width="7" height="72" rx="3" fill="' + QUADRO + '"/>' +
+      '<rect x="39" y="-142" width="7" height="72" rx="3" fill="' + QUADRO + '"/>' +
+
+      /* assento — abaixo do colo da toga, que o cobre por cima */
+      '<rect x="-40" y="-92" width="80" height="9" rx="4" fill="' + QUADRO_CLARO + '"/>' +
+
+      /* encosto, logo atrás dos ombros */
+      '<rect x="-40" y="-186" width="80" height="10" rx="5" fill="' + QUADRO_CLARO + '"/>';
   }
 
-  /* O que fica à frente: assento, quadro dianteiro, apoio de pé e rodízio. */
+  /* O que fica à frente: os tubos dianteiros, a tábua do apoio de pé e os
+     rodízios. */
   function cadeiraFrente() {
     return '' +
-      /* assento — logo abaixo do colo da toga, que o cobre por cima */
-      '<rect x="-42" y="-88" width="84" height="9" rx="4" fill="' + QUADRO_CLARO + '"/>' +
-      /* quadro dianteiro */
-      '<line x1="32" y1="-84" x2="72" y2="-26" stroke="' + QUADRO + '" ' +
-        'stroke-width="7" stroke-linecap="round"/>' +
-      /* apoio de pé */
-      '<line x1="34" y1="-84" x2="68" y2="-22" stroke="' + QUADRO + '" ' +
-        'stroke-width="6" stroke-linecap="round"/>' +
-      '<rect x="50" y="-20" width="44" height="8" rx="4" fill="' + QUADRO + '"/>' +
-      /* rodízio dianteiro */
-      '<circle cx="74" cy="-13" r="13" fill="none" stroke="' + ARO + '" stroke-width="5"/>' +
-      '<circle cx="74" cy="-13" r="3" fill="' + ARO + '"/>' +
-      /* roda principal */
-      rodaPrincipal(0, -48);
+      /* tubos dianteiros, do assento à tábua */
+      '<rect x="-38" y="-88" width="7" height="48" rx="3" fill="' + QUADRO + '"/>' +
+      '<rect x="31" y="-88" width="7" height="48" rx="3" fill="' + QUADRO + '"/>' +
+
+      /* apoio de pé: a tábua em que os sapatos pousam */
+      '<rect x="-48" y="-40" width="96" height="8" rx="4" fill="' + QUADRO_CLARO + '"/>' +
+
+      /* rodízios dianteiros, logo abaixo da tábua — encostados nela e não por
+         cima dela, senão a tábua some atrás dos dois aros */
+      '<ellipse cx="-36" cy="-16" rx="8" ry="16" fill="none" stroke="' + ARO + '" stroke-width="5"/>' +
+      '<ellipse cx="36" cy="-16" rx="8" ry="16" fill="none" stroke="' + ARO + '" stroke-width="5"/>' +
+      '<ellipse cx="-36" cy="-16" rx="2.5" ry="4.5" fill="' + ARO + '"/>' +
+      '<ellipse cx="36" cy="-16" rx="2.5" ry="4.5" fill="' + ARO + '"/>';
   }
 
-  /* A juíza sentada, em perfil, voltada para a direita.
-     O ponto (0,0) é o chão, sob o centro da roda principal: é ele que permite
-     empilhar as três camadas — cadeira de trás, juíza, cadeira da frente —
-     sem que nenhuma precise saber onde as outras foram parar. */
+  /* O martelo de juiz, desenhado no ponto em que a mão o empunha. A cabeça é
+     perpendicular ao cabo, e por isso o `giro` que a acompanha é sempre o do
+     cabo erguido mais noventa graus. */
+  function martelo(cx, cy, giro) {
+    return '' +
+      '<g transform="translate(' + cx + ',' + cy + ') rotate(' + giro + ')">' +
+        '<rect x="-14" y="-7" width="28" height="14" rx="3.5" fill="' + JUIZA.madeira + '"/>' +
+        '<rect x="-14" y="-7" width="28" height="4.5" rx="2.25" fill="' + JUIZA.madeiraLuz + '" opacity=".75"/>' +
+        '<rect x="-12" y="2.5" width="24" height="2.6" rx="1.3" fill="' + JUIZA.madeiraEsc + '" opacity=".45"/>' +
+      '</g>';
+  }
+
+  /* A peruca de juiz, de frente: a coroa, a aba encaracolada na altura da
+     testa e os dois cachos de rolinhos caindo pelos lados do rosto até os
+     ombros — iguais entre si, porque de frente a figura é simétrica.
+     A aba assenta na MESMA linha em y=-212 que era a do cabelo na versão de
+     perfil: as feições continuam todas abaixo dela. Foi por colocá-las acima
+     que a primeira versão da juíza saiu com uma faixa escura atravessando os
+     olhos.
+     Cada rolinho tem contorno próprio, e é o contorno que faz a pilha se ler
+     como peruca e não como cabelo comprido. Os cachos param em x=+-22, fora
+     das orelhas e dos brincos, que são dela e não do ofício. */
+  function perucaDaJuiza() {
+    var cacho = function (x) {
+      return '' +
+        '<rect x="' + x + '" y="-216" width="14" height="12" rx="6" fill="' + JUIZA.peruca + '" stroke="' + JUIZA.perucaEsc + '" stroke-width="1.2"/>' +
+        '<rect x="' + x + '" y="-205" width="14" height="12" rx="6" fill="' + JUIZA.peruca + '" stroke="' + JUIZA.perucaEsc + '" stroke-width="1.2"/>' +
+        '<rect x="' + x + '" y="-194" width="14" height="12" rx="6" fill="' + JUIZA.peruca + '" stroke="' + JUIZA.perucaEsc + '" stroke-width="1.2"/>' +
+        '<rect x="' + x + '" y="-183" width="14" height="12" rx="6" fill="' + JUIZA.peruca + '" stroke="' + JUIZA.perucaEsc + '" stroke-width="1.2"/>';
+    };
+    return '' +
+      /* os dois cachos, um de cada lado do rosto */
+      cacho(-36) + cacho(22) +
+
+      /* a coroa */
+      '<path d="M -24,-215 a 24,24 0 0 1 48,0 z" fill="' + JUIZA.peruca + '" stroke="' + JUIZA.perucaEsc + '" stroke-width="1.2"/>' +
+      /* a fileira de rolinhos do alto, entre a aba e a coroa */
+      '<path d="M -15,-215 a 15,15 0 0 1 30,0" fill="none" stroke="' + JUIZA.perucaEsc + '" stroke-width="1.6" opacity=".7"/>' +
+
+      /* a aba, mais larga que a coroa e logo acima da sobrancelha */
+      '<rect x="-26" y="-222" width="52" height="10" rx="5" fill="' + JUIZA.peruca + '" stroke="' + JUIZA.perucaEsc + '" stroke-width="1.2"/>' +
+      '<path d="M -13,-222 q -3,5 0,10" stroke="' + JUIZA.perucaEsc + '" stroke-width="1.2" fill="none"/>' +
+      '<path d="M 0,-222 q -3,5 0,10" stroke="' + JUIZA.perucaEsc + '" stroke-width="1.2" fill="none"/>' +
+      '<path d="M 13,-222 q -3,5 0,10" stroke="' + JUIZA.perucaEsc + '" stroke-width="1.2" fill="none"/>';
+  }
+
+  /* A juíza sentada, de frente.
+     O ponto (0,0) é o chão, no eixo da cadeira: é ele que permite empilhar as
+     três camadas — cadeira de trás, juíza, cadeira da frente — sem que
+     nenhuma precise saber onde as outras foram parar. */
   function juizaSentada() {
     return '' +
-      /* canela e sapato, saindo de sob a toga */
-      '<rect x="48" y="-90" width="18" height="64" rx="9" fill="' + JUIZA.togaEsc + '"/>' +
-      '<rect x="52" y="-30" width="34" height="14" rx="6" fill="' + COR.linha + '"/>' +
+      /* canelas e sapatos, saindo de sob a toga e pousando na tábua */
+      '<rect x="-31" y="-88" width="16" height="36" rx="8" fill="' + COR.calca + '"/>' +
+      '<rect x="15" y="-88" width="16" height="36" rx="8" fill="' + COR.calca + '"/>' +
+      '<rect x="-30" y="-54" width="28" height="15" rx="7" fill="' + COR.linha + '"/>' +
+      '<rect x="2" y="-54" width="28" height="15" rx="7" fill="' + COR.linha + '"/>' +
 
       /* tronco e colo da toga */
-      '<rect x="-12" y="-176" width="44" height="70" rx="15" fill="' + JUIZA.toga + '"/>' +
-      '<rect x="-16" y="-112" width="80" height="30" rx="13" fill="' + JUIZA.toga + '"/>' +
-      /* pregas */
-      '<path d="M 0,-170 L 2,-116" stroke="' + JUIZA.togaEsc + '" stroke-width="2.4" opacity=".65"/>' +
-      '<path d="M 14,-172 L 16,-118" stroke="' + JUIZA.togaEsc + '" stroke-width="2.4" opacity=".65"/>' +
-      '<path d="M -6,-104 L 50,-100" stroke="' + JUIZA.togaEsc + '" stroke-width="2.2" opacity=".5"/>' +
-      /* jabot */
-      '<path d="M 2,-178 L 12,-158 L 22,-178 Z" fill="' + JUIZA.jabot + '"/>' +
+      '<rect x="-31" y="-178" width="62" height="72" rx="16" fill="' + JUIZA.toga + '"/>' +
+      '<rect x="-46" y="-112" width="92" height="30" rx="13" fill="' + JUIZA.toga + '"/>' +
+      /* pregas: sobre o preto o vinco é a luz que bate na dobra, não a sombra */
+      '<path d="M -16,-168 L -18,-116" stroke="' + JUIZA.togaLuz + '" stroke-width="2" opacity=".6"/>' +
+      '<path d="M 16,-168 L 18,-116" stroke="' + JUIZA.togaLuz + '" stroke-width="2" opacity=".6"/>' +
+      '<path d="M -32,-102 L 32,-102" stroke="' + JUIZA.togaLuz + '" stroke-width="1.8" opacity=".45"/>' +
 
-      /* braço apoiado, com a mão sobre a pasta */
-      '<line x1="20" y1="-166" x2="48" y2="-130" stroke="' + JUIZA.toga + '" ' +
+      /* o jabot: a gola e as duas bandas brancas caindo sobre o peito */
+      '<rect x="-12" y="-181" width="24" height="8" rx="4" fill="' + JUIZA.jabot + '"/>' +
+      '<path d="M -10,-176 L 10,-176 L 8,-134 L 0,-127 L -8,-134 Z" fill="' + JUIZA.jabot + '"/>' +
+      '<path d="M 0,-174 L 0,-131" stroke="' + COR.papelEsc + '" stroke-width="1.4"/>' +
+
+      /* Braço esquerdo dela (à direita de quem olha): desce e a mão pousa
+         sobre o colo. A mão fica sobre a toga, e não sobre o apoio de braço,
+         porque o apoio é desenhado na camada de trás e não poderia cobri-la. */
+      '<line x1="26" y1="-172" x2="32" y2="-128" stroke="' + JUIZA.toga + '" ' +
+        'stroke-width="13" stroke-linecap="round"/>' +
+      '<circle cx="33" cy="-120" r="7.5" fill="' + JUIZA.pele + '"/>' +
+
+      /* Braço direito dela (à esquerda de quem olha): erguido com o martelo.
+         O cotovelo sai na altura do peito e o antebraço sobe reto; de frente,
+         o cabo sobe na vertical e a cabeça do martelo fica deitada, acima da
+         coroa da peruca. */
+      '<line x1="-26" y1="-172" x2="-48" y2="-188" stroke="' + JUIZA.toga + '" ' +
         'stroke-width="14" stroke-linecap="round"/>' +
-      '<circle cx="52" cy="-126" r="7.5" fill="' + JUIZA.pele + '"/>' +
-      '<g transform="rotate(-9 66 -120)">' +
-        '<rect x="44" y="-130" width="48" height="17" rx="3" fill="' + COR.papel + '" ' +
-          'stroke="' + COR.papelEsc + '" stroke-width="1.4"/>' +
-        '<rect x="50" y="-125" width="30" height="2.6" rx="1.3" fill="' + COR.papelEsc + '"/>' +
-        '<rect x="50" y="-119" width="22" height="2.6" rx="1.3" fill="' + COR.papelEsc + '"/>' +
-      '</g>' +
+      '<line x1="-48" y1="-188" x2="-44" y2="-208" stroke="' + JUIZA.toga + '" ' +
+        'stroke-width="12" stroke-linecap="round"/>' +
+      '<line x1="-44" y1="-198" x2="-44" y2="-232" stroke="' + JUIZA.madeiraEsc + '" ' +
+        'stroke-width="6.5" stroke-linecap="round"/>' +
+      martelo(-44, -233, 0) +
+      '<circle cx="-44" cy="-210" r="7.5" fill="' + JUIZA.pele + '"/>' +
 
       /* pescoço e cabeça */
-      '<rect x="6" y="-190" width="15" height="18" fill="' + JUIZA.pele + '"/>' +
-      '<circle cx="12" cy="-208" r="21" fill="' + JUIZA.pele + '"/>' +
+      '<rect x="-7.5" y="-195" width="15" height="20" fill="' + JUIZA.pele + '"/>' +
+      '<circle cx="0" cy="-208" r="21" fill="' + JUIZA.pele + '"/>' +
 
-      /* Cabelo: um semicírculo de raio 22 assentado sobre o alto da cabeça,
-         com a corda em y=-211. Um raio ligeiramente maior que o da cabeça dá
-         o volume, e a corda reta é a linha do cabelo — o rosto começa abaixo
-         dela. As feições ficam TODAS abaixo de -211: foi por colocá-las acima
-         que a primeira versão saiu com uma faixa escura atravessando os olhos. */
-      '<path d="M -10,-211 a 22,22 0 0 1 44,0 z" fill="' + JUIZA.cabelo + '"/>' +
+      perucaDaJuiza() +
 
-      /* orelha e brinco */
-      '<circle cx="-2" cy="-204" r="4.4" fill="' + JUIZA.pele + '"/>' +
-      '<circle cx="-2" cy="-195" r="2.6" fill="' + COR.marca + '"/>' +
+      /* orelhas e brincos, por cima da peruca: são dela, não do ofício */
+      '<circle cx="-19" cy="-203" r="4.4" fill="' + JUIZA.pele + '"/>' +
+      '<circle cx="19" cy="-203" r="4.4" fill="' + JUIZA.pele + '"/>' +
+      '<circle cx="-19" cy="-195" r="2.6" fill="' + COR.marca + '"/>' +
+      '<circle cx="19" cy="-195" r="2.6" fill="' + COR.marca + '"/>' +
 
-      /* olho, nariz e boca, de perfil */
-      '<circle cx="24" cy="-205" r="2.5" fill="' + COR.linha + '"/>' +
-      '<path d="M 31,-206 q 3.5,1.5 3,4" stroke="' + COR.linha + '" stroke-width="1.6" ' +
+      /* olhos, nariz e boca, de frente */
+      '<circle cx="-7" cy="-206" r="2.5" fill="' + COR.linha + '"/>' +
+      '<circle cx="7" cy="-206" r="2.5" fill="' + COR.linha + '"/>' +
+      '<path d="M 0,-204 v 4 q 0,1.6 -2,1.6" stroke="' + COR.linha + '" stroke-width="1.6" ' +
         'fill="none" stroke-linecap="round"/>' +
-      '<path d="M 25,-195 q 5,1 8,-1" stroke="' + COR.linha + '" stroke-width="1.8" ' +
+      '<path d="M -5,-193 q 5,3.5 10,0" stroke="' + COR.linha + '" stroke-width="1.8" ' +
         'fill="none" stroke-linecap="round"/>';
   }
 
@@ -536,12 +617,24 @@
   }
 
   /* A cena do julgamento, inteira.
-     O enquadramento é fechado de propósito: a juíza ocupa a metade esquerda
-     do quadro, e não um canto dele. Uma figura pequena ao lado de uma sala
-     vazia sugeriria que ela é um detalhe da cena — e é o contrário. */
+     A juíza fica no eixo do quadro, de frente, e a bancada fica no mesmo eixo
+     e à frente dela: o processo e a tábua do martelo estão sobre o tampo, e
+     não numa mesa de canto. A parede abre para os dois lados — a estante à
+     esquerda, o emblema e a placa à direita. Uma figura pequena ao lado de
+     uma sala vazia sugeriria que ela é um detalhe da cena; no eixo, encarando
+     o jogador e com a bancada à frente, é a cena. */
   function cenaJuiza() {
-    var AUMENTO = 1.30;
+    /* A escala do sujeito. O limite não é escolhido: o ponto mais alto da
+       figura é a cabeça do martelo erguido, 240 unidades acima do chão, e ela
+       não pode bater no topo do quadro. Com 1,38 ela para em y=13, com 12 de
+       folga; 1,45 a cortaria. É o máximo que este enquadramento dá. */
+    var AUMENTO = 1.38;
     var CHAO = 344;
+    /* O eixo é o do quadro, e não o de quem veio antes: na versão de perfil a
+       figura se estendia para a direita do eixo, e 272 a punha no meio. De
+       frente ela é simétrica, e 272 a deixava 48 unidades à esquerda do meio
+       — com a bancada no mesmo eixo, os dois apareciam fora do lugar. */
+    var EIXO = 320;
 
     return svg(
       /* parede e piso da sala de audiência */
@@ -550,48 +643,75 @@
       '<rect x="0" y="316" width="640" height="44" fill="#c4ccda"/>' +
       '<rect x="0" y="311" width="640" height="5" fill="#aab4c6"/>' +
 
-      /* estante ao fundo, dando profundidade sem disputar atenção */
+      /* estante à esquerda, dando profundidade sem disputar atenção. As
+         prateleiras param antes da bancada: com a mesa no eixo, uma estante
+         larga demais encostaria na quina esquerda do tampo. Ela encolheu
+         quando o sujeito cresceu — a quina do tampo subiu de 190 para 141, e
+         as prateleiras têm de acabar antes disso. */
       '<g opacity=".3">' +
-        '<rect x="300" y="204" width="330" height="10" rx="3" fill="' + COR.predioDet + '"/>' +
-        '<rect x="300" y="244" width="330" height="10" rx="3" fill="' + COR.predioDet + '"/>' +
-        '<rect x="314" y="188" width="15" height="16" fill="' + COR.predioEsc + '"/>' +
-        '<rect x="336" y="182" width="13" height="22" fill="' + COR.predioEsc + '"/>' +
-        '<rect x="356" y="190" width="17" height="14" fill="' + COR.predioEsc + '"/>' +
-        '<rect x="520" y="186" width="14" height="18" fill="' + COR.predioEsc + '"/>' +
-        '<rect x="542" y="192" width="16" height="12" fill="' + COR.predioEsc + '"/>' +
+        '<rect x="16" y="204" width="112" height="10" rx="3" fill="' + COR.predioDet + '"/>' +
+        '<rect x="16" y="244" width="112" height="10" rx="3" fill="' + COR.predioDet + '"/>' +
+        '<rect x="30" y="188" width="15" height="16" fill="' + COR.predioEsc + '"/>' +
+        '<rect x="52" y="182" width="13" height="22" fill="' + COR.predioEsc + '"/>' +
+        '<rect x="72" y="190" width="17" height="14" fill="' + COR.predioEsc + '"/>' +
+        '<rect x="94" y="186" width="14" height="18" fill="' + COR.predioEsc + '"/>' +
+        '<rect x="112" y="192" width="14" height="12" fill="' + COR.predioEsc + '"/>' +
       '</g>' +
 
-      /* emblema e placa */
-      '<circle cx="428" cy="86" r="46" fill="' + COR.papel + '" stroke="' + COR.predioDet + '" stroke-width="3"/>' +
-      balanca(428, 86, 0.78) +
-      '<rect x="324" y="146" width="208" height="29" rx="5" fill="' + COR.papel + '" ' +
+      /* emblema e placa, na parede à direita, acima da bancada */
+      '<circle cx="508" cy="84" r="42" fill="' + COR.papel + '" stroke="' + COR.predioDet + '" stroke-width="3"/>' +
+      balanca(508, 84, 0.7) +
+      '<rect x="396" y="140" width="224" height="29" rx="5" fill="' + COR.papel + '" ' +
         'stroke="' + COR.predioDet + '" stroke-width="2"/>' +
-      '<text x="428" y="165" font-family="' + FONTE + '" font-size="12.5" font-weight="800" ' +
-        'fill="' + COR.predioDet + '" text-anchor="middle" letter-spacing=".4">' +
+      '<text x="508" y="159" font-family="' + FONTE + '" font-size="12" font-weight="800" ' +
+        'fill="' + COR.predioDet + '" text-anchor="middle" letter-spacing=".3">' +
         'TRIBUNAL REGIONAL ELEITORAL</text>' +
 
-      /* a mesa de audiência, à direita */
-      '<g transform="translate(346,296)">' +
-        '<rect x="0" y="-24" width="216" height="20" rx="4" fill="' + JUIZA.madeira + '"/>' +
-        '<rect x="0" y="-4" width="216" height="9" rx="3" fill="' + JUIZA.madeiraEsc + '"/>' +
-        '<rect x="17" y="5" width="15" height="47" rx="3" fill="' + JUIZA.madeiraEsc + '"/>' +
-        '<rect x="184" y="5" width="15" height="47" rx="3" fill="' + JUIZA.madeiraEsc + '"/>' +
-      '</g>' +
-
-      /* o processo sobre a mesa: é ele que ela acabou de ler */
-      '<g transform="translate(392,262) rotate(-4)">' +
-        '<rect x="0" y="0" width="88" height="17" rx="2" fill="' + COR.papel + '" ' +
-          'stroke="' + COR.papelEsc + '" stroke-width="1.4"/>' +
-        '<rect x="5" y="13" width="80" height="17" rx="2" fill="' + COR.papel + '" ' +
-          'stroke="' + COR.papelEsc + '" stroke-width="1.4"/>' +
-        '<rect x="12" y="6" width="48" height="3" rx="1.5" fill="' + COR.papelEsc + '"/>' +
-      '</g>' +
-
-      /* as três camadas: cadeira de trás, juíza, cadeira da frente */
-      '<g transform="translate(104,' + CHAO + ') scale(' + AUMENTO + ')">' +
+      /* O SUJEITO — a juíza, a cadeira e a bancada —, num só grupo escalado a
+         partir do chão. É o que permite aumentar a cena sem sair do quadro: o
+         que cresce é o sujeito inteiro, e a bancada continua na cintura dela
+         porque cresce junto. Dentro do grupo o chão é y=0 e o eixo é x=0, de
+         modo que tudo aqui fala em unidades de figura. */
+      '<g transform="translate(' + EIXO + ',' + CHAO + ') scale(' + AUMENTO + ')">' +
+        /* as três camadas: cadeira de trás, juíza, cadeira da frente */
         cadeiraAtras() +
         juizaSentada() +
         cadeiraFrente() +
+
+        /* A bancada de audiência, no mesmo eixo dela e à frente: é a mesa onde
+           o processo está e onde o martelo vai bater. Vem DEPOIS da figura, e
+           não antes, porque de frente ela tapa o que está entre ela e quem
+           olha — mas tapa só a faixa do tampo, na altura do colo dela. Mesa
+           tem vão: sob o tampo a cadeira continua à vista, com o apoio de pé e
+           os rodízios passando entre as pernas. Esconder a cadeira de vez
+           exigiria um painel fechado, e a cadeira não se esconde. */
+        '<g transform="translate(0,-76)">' +
+          '<rect x="-130" y="-2" width="260" height="20" rx="4" fill="' + JUIZA.madeira + '"/>' +
+          '<rect x="-130" y="18" width="260" height="9" rx="3" fill="' + JUIZA.madeiraEsc + '"/>' +
+          /* As pernas descem da saia até o chão do grupo — y=0 —, e não até um
+             y medido na tela: era essa a conta que se perdia quando só a
+             figura mudava de escala. */
+          '<rect x="-112" y="27" width="16" height="51" rx="3" fill="' + JUIZA.madeiraEsc + '"/>' +
+          '<rect x="96" y="27" width="16" height="51" rx="3" fill="' + JUIZA.madeiraEsc + '"/>' +
+        '</g>' +
+
+        /* o processo sobre o tampo: é ele que ela acabou de ler */
+        '<g transform="translate(30,-85) rotate(-4)">' +
+          '<rect x="0" y="0" width="88" height="17" rx="2" fill="' + COR.papel + '" ' +
+            'stroke="' + COR.papelEsc + '" stroke-width="1.4"/>' +
+          '<rect x="5" y="13" width="80" height="17" rx="2" fill="' + COR.papel + '" ' +
+            'stroke="' + COR.papelEsc + '" stroke-width="1.4"/>' +
+          '<rect x="12" y="6" width="48" height="3" rx="1.5" fill="' + COR.papelEsc + '"/>' +
+        '</g>' +
+
+        /* a tábua, no tampo e sob a mão erguida: é sobre ela que o martelo
+           desce. A coordenada é a do martelo, escrita na mesma unidade que
+           ele — x=-44 é literalmente o x do martelo, e antes era preciso
+           multiplicá-lo pela escala da figura, à mão, toda vez que ela mudasse. */
+        '<g transform="translate(-44,-76)">' +
+          '<rect x="-19" y="-9" width="38" height="9" rx="3" fill="' + JUIZA.madeira + '"/>' +
+          '<rect x="-19" y="-9" width="38" height="3.4" rx="1.7" fill="' + JUIZA.madeiraLuz + '" opacity=".7"/>' +
+        '</g>' +
       '</g>',
       640, 360
     );

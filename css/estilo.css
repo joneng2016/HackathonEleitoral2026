@@ -986,10 +986,17 @@ p[tabindex="-1"]:focus-visible {
 }
 .bloco-erro[data-natureza="vedacao"] h3 { color: var(--observar); }
 
-/* ---- A juíza ---------------------------------------------------------- */
+/* ---- A juíza ----------------------------------------------------------
+   O painel do julgamento é o único que NÃO cabe em `.final`. As telas de
+   desfecho são texto, e 860px é uma medida de leitura; aqui o argumento é a
+   ilustração, e dentro daquela caixa ela saía com 107px de largura — a juíza
+   tinha 107 por 189 pixels na tela. Esta tela usa a largura inteira do palco,
+   e a figura fica com a coluna maior. */
+.final--juiza { max-width: var(--largura); }
+
 .juiza {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
   gap: 26px;
   align-items: start;
   background: var(--superficie);
@@ -1033,7 +1040,7 @@ p[tabindex="-1"]:focus-visible {
   border: 2px solid var(--permitido);
   background: var(--permitido-bg);
 }
-.juiza__veredito[data-veredito="impugnada"] {
+.juiza__veredito[data-veredito="indeferida"] {
   border-color: var(--crime);
   background: var(--crime-bg);
 }
@@ -1045,7 +1052,7 @@ p[tabindex="-1"]:focus-visible {
   color: var(--permitido);
   margin-bottom: 4px;
 }
-.juiza__veredito[data-veredito="impugnada"] .juiza__veredito-rotulo { color: var(--crime); }
+.juiza__veredito[data-veredito="indeferida"] .juiza__veredito-rotulo { color: var(--crime); }
 .juiza__veredito-titulo { font-size: 1.1rem; font-weight: 800; }
 
 .juiza__ilicito { margin-bottom: 20px; }
@@ -1071,12 +1078,48 @@ p[tabindex="-1"]:focus-visible {
 .ilicito-item b { font-size: .9rem; }
 .ilicito-item span { font-size: .86rem; color: var(--texto-suave); }
 
-.juiza__contagem {
-  margin-top: 10px;
-  font-size: .86rem;
+/* ---- A conta do veredito ----------------------------------------------
+   O veredito é uma COMPARAÇÃO entre duas contagens, então os dois números
+   aparecem lado a lado, e a regra vem logo abaixo. Um número só — o de
+   ilícitos — não deixaria o jogador conferir a conta que o julgou. As cores
+   são as do resto do jogo: o que é conforme em verde, o ilícito em vermelho
+   (e o zero em neutro, porque zero ilícito não é um alerta). */
+.juiza__conta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 14px 16px 12px;
+  margin-bottom: 8px;
+  border-radius: var(--raio-p);
+  background: var(--superficie-2);
+  border: 1px solid var(--borda);
+}
+.juiza__conta-numero {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--permitido);
+  font-variant-numeric: tabular-nums;
+}
+.juiza__conta-numero--ilicito { color: var(--crime); }
+.juiza__conta-rotulo {
+  font-size: .74rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+}
+.juiza__conta-x { font-size: 1rem; font-weight: 800; color: var(--texto-suave); }
+.juiza__conta-total {
+  margin-left: auto;
+  font-size: .8rem;
   font-weight: 700;
   color: var(--texto-suave);
-  font-variant-numeric: tabular-nums;
+}
+.juiza__regra {
+  margin-bottom: 20px;
+  font-size: .84rem;
+  color: var(--texto-suave);
 }
 .juiza__limpo {
   font-size: .96rem;

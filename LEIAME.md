@@ -44,13 +44,28 @@ compram impunidade — exatamente o contrário do que ele quer ensinar.
 O jogo não pergunta ao jogador o que ele acha da conduta de outra pessoa.
 Pergunta o que **ele faz**. Cada circunstância oferece quatro condutas, uma ou
 duas delas ilícitas, e a escolha entra no **índice de ilícitos** da candidatura.
-No fim da fase, a juíza lê o índice:
+No fim da fase, a juíza lê o índice e decide pelo que ele conta:
 
-| Ilícitos na candidatura | Desfecho |
+| Atos da candidatura | Desfecho |
 |---|---|
-| Nenhum | **Candidatura deferida** — concorre sem ressalva |
-| Um | **Deferida com advertência** — concorre, e o registro fica |
-| Dois ou mais | **Impugnada** — não disputa a eleição, e a fase se refaz |
+| Mais atos lícitos | **Candidatura deferida** — o registro passa, e ela concorre |
+| Mais atos ilícitos | **Candidatura indeferida** — o registro é negado, e a fase se refaz |
+
+**O veredito é a maioria dos atos.** Cada circunstância vale um ato, o ato é
+lícito ou ilícito, e ganha a contagem que for maior. Não é uma soma de
+gravidade: um ilícito de cada lado vale o mesmo, e a regra é dita ao jogador
+na tela do julgamento, com os dois números à vista — a conta que julga não
+pode ser a única coisa que o jogador não vê.
+
+Duas consequências da regra, e as duas são declaradas:
+
+- **O empate não indefere.** Sem maioria contra o registro, a candidatura
+  passa. Com três circunstâncias por fase ele nem é alcançável — e o jogo se
+  recusa a abrir com um número par de circunstâncias, em vez de decidir no
+  escuro o que fazer com um empate.
+- **Um ilícito em três atos é candidatura deferida.** A maioria continua
+  lícita e o veredito é o de sempre; o que fica é o **registro** do ilícito,
+  que a juíza lê em voz alta. É advertência de conduta, não terceiro veredito.
 
 Uma candidatura deferida **concorre**, e o resultado da urna é **sorteado**.
 O sorteio não muda nada: nem a fase seguinte, nem o que o jogador aprendeu.
@@ -66,7 +81,7 @@ limpa vale mais do que vencê-la com ilícitos no caminho.
 ```
 retrato  →  origem  →  ficha  →  EVENTO (d20)  →  circunstância 1..3  →  juíza do TRE  →  apuração  →  …
                                    a reta final      4 condutas cada      │             (sorteio)
-                                                                          │ impugnada
+                                                                          │ indeferida
                                                                           ▼
                                                                  não se elegeu vereador
                                                                  → refaz a fase 1
@@ -155,9 +170,12 @@ que o jogador não escolheu é, muitas vezes, a que ele ainda não sabe julgar.
 
 ### No julgamento
 
-A **juíza eleitoral**, desenhada em perfil na sua cadeira de rodas, diante da
-mesa de audiência e do emblema do Tribunal Regional Eleitoral. Ela lê o
-relatório, lista os ilícitos da candidatura e decide.
+A **juíza eleitoral**, desenhada de frente na sua cadeira de rodas, no eixo do
+quadro, ocupando a maior parte dele, com a bancada de audiência à frente e o
+emblema do Tribunal Regional Eleitoral ao fundo. Sobre o tampo estão o processo que ela acabou de ler e a
+tábua onde o martelo vai bater. De peruca branca, toga preta e o martelo
+erguido, ela encara quem joga: lê o relatório, lista os ilícitos da
+candidatura e decide.
 
 ---
 
@@ -169,10 +187,10 @@ relatório, lista os ilícitos da candidatura e decide.
 |---|---|
 | `LEI` | transcrições literais dos dispositivos, citadas entre aspas nas telas |
 | `AVATARES` | as opções de retrato e as cores usadas para desenhá-las |
-| `FASES` | as duas candidaturas, a tolerância a ilícitos e quantas condutas ilícitas cada circunstância tem |
+| `FASES` | as duas candidaturas, quantas circunstâncias cada uma tem e qual é, em ilícitos, a maioria dos seus atos (`tolera`) |
 | `CENAS` | as seis circunstâncias e as quatro condutas de cada uma |
 | `PERGUNTAS_RESOLUCAO` | as três perguntas exibidas ao final |
-| `JUIZA` | o julgamento da candidatura, com os três desfechos |
+| `JUIZA` | o julgamento da candidatura: a regra do veredito e os textos de cada caso |
 | `SORTE` | o resultado da urna |
 | `ATRIBUTOS` | os quatro traços do candidato |
 | `ORIGENS` | de onde o candidato vem; define atributos e caixa inicial |
@@ -207,7 +225,7 @@ decidisse a progressão, o jogo ensinaria o contrário do que quer ensinar.
 cada candidatura responde pelos próprios ilícitos — por isso o índice zera ao
 abrir a fase seguinte. O acumulado da carreira aparece no encerramento.
 
-**Refazer a fase devolve a campanha e zera o índice.** A candidatura impugnada
+**Refazer a fase devolve a campanha e zera o índice.** A candidatura indeferida
 é refeita do zero: não é uma segunda chance sobre uma campanha já desgastada,
 é a mesma candidatura, de novo, com o jogador sabendo o que não sabia. O
 evento de campanha é resorteado junto. O que não volta atrás é a lição — a
@@ -216,10 +234,46 @@ fundamentação de cada escolha continua na tela de derrota.
 **O desenho nunca revela a resposta.** As quatro condutas de uma circunstância
 usam as mesmas cores de figura, fundo e vestuário na ilustração.
 
-**A juíza é desenhada em perfil, e não atrás de uma bancada.** A cadeira de
-rodas é parte de quem ela é, e não um detalhe a esconder. Ela é desenhada em
-três camadas — cadeira de trás, juíza, cadeira da frente —, porque sem essa
-separação ou a roda cobre o colo dela, ou o assento some atrás do corpo.
+**A juíza é desenhada de frente, e a bancada fica à frente dela.** Ela é a
+cena, e não um detalhe dela: por isso está no eixo do quadro, encarando quem
+joga, e a mesa está no mesmo eixo, com o processo e a tábua sobre o tampo.
+A cadeira de rodas é parte de quem ela é, e não um detalhe a esconder: mesa
+tem vão. O desenho da bancada vem *depois* do desenho da figura, então o tampo
+tapa a faixa do colo dela — mas sob o tampo a cadeira continua à vista, com o
+apoio de pé e os rodízios passando entre as pernas. Fechar esse vão com um
+painel esconderia a cadeira inteira, e é justamente o que não se quer. De
+frente a cadeira se lê pelas duas rodas ladeando o corpo, pelos rodízios e
+pela tábua do apoio de pé. A roda vista de frente é uma elipse estreita e sem
+raios — de frente os raios não apareceriam, e desenhá-los faria a roda voltar
+a parecer de perfil. Ela é desenhada em três camadas — cadeira de trás, juíza,
+cadeira da frente —, porque sem essa separação ou a roda cobre o colo dela, ou
+o assento some atrás do corpo. Os empurradores, que de frente ficam atrás dos
+ombros, não são desenhados: viram duas borrachas escuras coladas na peruca.
+
+**O tamanho dela no quadro tem um teto, e o teto é aritmético.** A juíza, a
+cadeira e a bancada formam **um só grupo**, escalado a partir do chão: o que
+cresce é o sujeito inteiro, e a bancada continua na cintura dela porque cresce
+junto. O ponto mais alto da figura é a cabeça do martelo erguido, 240 unidades
+acima do chão, e ele não pode bater no topo do quadro. Com a escala em **1,38**
+ele para em y=13, com 12 de folga; em 1,45 seria cortado. Não há como aumentar
+muito mais sem fechar o enquadramento — e fechar o enquadramento custaria o
+emblema, a placa e a estante, que é o preço que este desenho não paga.
+
+Estar num só grupo também tirou uma conta frágil: a tábua sob o martelo era
+posicionada por `EIXO - 44 * 1.24`, com a escala escrita à mão dentro da
+coordenada. Toda vez que a figura crescesse, a tábua sairia de baixo do martelo
+em silêncio. Dentro do grupo ela está em `x=-44`, a mesma unidade do martelo, e
+as pernas da bancada descem até `y=0`, que é o chão do grupo. As prateleiras da
+estante encurtaram de 160 para 112: a quina do tampo subiu de 190 para 141, e as
+prateleiras têm de acabar antes dela.
+
+**O traje é do ofício; a cadeira e as feições são dela.** A peruca branca, a
+toga preta e o martelo dizem o que ela faz; a cadeira de rodas, a orelha, o
+brinco e o rosto dizem quem ela é. O traje veio depois e não pode ter custado
+nenhum dos dois: por isso os cachos da peruca param antes da orelha, e a
+orelha e o brinco são desenhados por cima dela. Pelo mesmo motivo a canela sai
+em `COR.calca` e não em preto, e as pregas da toga são claras: sobre o preto, o
+vinco que se lê é a luz que bate na dobra, não a sombra que ela faz.
 
 **A nota de honestidade intelectual fica visível ao jogador.** O jogo comprime
 o rito da impugnação para caber numa tela, e diz isso na própria tela, com as
@@ -266,10 +320,11 @@ Duas precisões incorporadas ao conteúdo:
   fronteira; o núcleo, porém, está assentado — a manifestação deixa de ser
   silenciosa quando se dirige a alguém. O jogo declara a divergência.
 
-### A impugnação — e o que o jogo comprime
+### O indeferimento — e o que o jogo comprime
 
-No jogo, **dois ilícitos impugnam a candidatura automaticamente**. Na lei, essa
-automaticidade não existe:
+No jogo, **a maioria dos atos decide automaticamente**: cada circunstância vale
+um ato, e dois ilícitos contra um lícito bastam para indeferir a candidatura.
+Na lei, essa automaticidade não existe:
 
 - A **ação de impugnação de registro de candidatura (AIRC)** está no **art. 3º
   da Lei Complementar nº 64/90**, com prazo de 5 dias da publicação do edital e
@@ -339,9 +394,10 @@ classificação.
    distribuído.
 3. **O cabo eleitoral na fila** atribui à campanha a responsabilidade pela
    conduta de um terceiro — ponto sensível, que pede conferência.
-4. **A tolerância de um ilícito** é decisão de produto: uma candidatura com uma
+4. **A maioria simples, e não o peso da conduta** é decisão de produto: três
+   circunstâncias iguais, valendo um ato cada, e uma candidatura com uma única
    conduta ilícita ainda se elege. Vale conferir se é a mensagem desejada.
-5. **A impugnação automática** é compressão declarada, não direito vigente.
+5. **O indeferimento automático** é compressão declarada, não direito vigente.
 
 ---
 
@@ -373,7 +429,7 @@ conteúdo de origem, com o hash conferido a cada execução.
 Cobrem: integridade referencial do arquivo de dados; os três passos da criação;
 o evento de campanha ponta a ponta com o dado controlado; a aplicação e a
 exibição dos efeitos na ficha; a subida do índice e seus três estados; os três
-desfechos do julgamento; a impugnação nas duas fases; o restauro da ficha **e**
+desfechos do julgamento; o indeferimento nas duas fases; o restauro da ficha **e**
 do índice ao refazer a fase; a reentrância da entrada; o teclado; o reinício; a
 responsividade; e ausência de erros no console.
 
@@ -409,6 +465,45 @@ minutos sem acrescentar nada à medição de responsividade — então a amostra
 para 10, e as duas afirmações viram medida. O relatório imprime o total que
 efetivamente rodou, em vez de um número fixo que poderia estar errado.
 
+### A regra do veredito — `way/verificar-veredito.js` e `way/jogar-julgamento.js`
+
+O veredito é a **maioria dos atos**, e duas baterias o conferem em node, sem
+navegador: um DOM de mentira basta, porque a primeira mede a **regra** e a
+segunda mede a **tela**.
+
+**922 conferências, 128 combinações de escolha, nenhuma divergência.** A bateria
+da regra enumera exaustivamente as escolhas das duas fases (4³ = 64 em cada,
+128 no total) e confere, combinação a combinação, que `indeferida` é verdadeiro
+exatamente quando o número de ilícitos supera o de lícitos; que a soma dos dois
+bate com o número de circunstâncias; que a declaração `tolera` de cada fase
+concorda com a maioria (e que nenhuma fase tem número par de atos, onde a
+maioria empataria e a regra não diria o que fazer); e que o bloco de texto
+escolhido declara o veredito que a conta manda.
+
+**191 conferências, 7 partidas jogadas até a juíza, nenhuma divergência.** A
+bateria da tela dirige o jogo de verdade pelos ganchos de `window.JOGO` — do
+retrato à juíza, circunstância por circunstância — e lê o HTML que cada
+desfecho escreveu, procurando o que o jogador veria se algo tivesse quebrado:
+`undefined`, `NaN`, contagem que não bate com o veredito, regra ausente, os dois
+vereditos ao mesmo tempo, ou o texto antigo da tolerância. Confere também o que
+vem depois: candidatura deferida segue para a apuração e a urna; indeferida
+encerra a candidatura.
+
+```
+node way/verificar-veredito.js
+→ divergências: nenhuma · conferências: 922
+→ combinações de escolha percorridas: 128 (2 fases)
+→ vereditos: 86 deferidas · 42 indeferidas
+
+node way/jogar-julgamento.js
+→ divergências: nenhuma · conferências: 191
+→ partidas jogadas até a juíza: 7
+```
+
+O que nenhuma das duas prova: que a **classificação das 24 condutas** está
+certa. Elas provam que o veredito decorre da contagem — não que a contagem
+decorra da lei.
+
 ### O portão é mais fraco que o da primeira versão — medido
 
 A versão original garantia, por construção, que **nenhuma** estratégia de
@@ -418,21 +513,22 @@ exibida**, em cinco rodadas de 150 partidas por fase:
 
 | Fase | R1 | R2 | R3 | R4 | R5 |
 |---|---|---|---|---|---|
-| Fase 1 (1 ilícita em 4, tolerância 1) | 87% | 85% | 89% | 83% | 87% |
-| Fase 2 (2 ilícitas em 4, tolerância 1) | 50% | 49% | 52% | 53% | 47% |
+| Fase 1 (1 ilícita em 4, maioria: 2 ilícitos em 3 atos) | 87% | 85% | 89% | 83% | 87% |
+| Fase 2 (2 ilícitas em 4, maioria: 2 ilícitos em 3 atos) | 50% | 49% | 52% | 53% | 47% |
 
 O número decorre da aritmética das escolhas feitas: com uma conduta ilícita
-entre quatro e três circunstâncias, a chance de acumular dois ilícitos é de
-cerca de 16%; com duas entre quatro, de cerca de 50%. O que o jogo **garante**
-é outra coisa, e está verificado de forma determinística: **a posição da
-conduta ilícita varia a cada partida**, de modo que nenhuma posição é gabarito.
-O que ele **não** garante é que a escolha aleatória reprove — e ela passa com
-uma frequência que a versão original não permitia.
+entre quatro e três circunstâncias, a chance de acumular dois ilícitos — a
+maioria dos três atos — é de cerca de 16%; com duas entre quatro, de cerca de
+50%. O que o jogo **garante** é outra coisa, e está verificado de forma
+determinística: **a posição da conduta ilícita varia a cada partida**, de modo
+que nenhuma posição é gabarito. O que ele **não** garante é que a escolha
+aleatória reprove — e ela passa com uma frequência que a versão original não
+permitia.
 
-Baixar a tolerância para zero (um ilícito já impugna) levaria a reprovação por
-escolha aleatória a cerca de 58% na fase 1 e 88% na fase 2, sem tocar em mais
-nada. **É decisão de produto, e está registrada aqui para ser tomada com o
-número à vista.**
+Exigir que **todos** os atos sejam lícitos — um único ilícito já indefere, e a
+maioria deixa de bastar — levaria a reprovação por escolha aleatória a cerca de
+58% na fase 1 e 88% na fase 2, sem tocar em mais nada. **É decisão de produto, e
+está registrada aqui para ser tomada com o número à vista.**
 
 ### Revisão visual — `way/captura-jogo.html` e `way/capturas-jogo/`
 
