@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><title>moldura</title>
+<style>body{margin:0}iframe{border:0;display:block}</style></head>
+<body>
+<!-- =========================================================================
+     A TELA DO EVENTO EM LARGURA DE CELULAR
+     -------------------------------------------------------------------------
+     O headless do Chrome no Windows não respeita --window-size abaixo de
+     500px — pedir 320 devolve 500, e a medição mentiria. Por isso a tela é
+     medida dentro de um iframe da largura pedida, e o relatório confere a
+     largura que o iframe REALMENTE recebeu antes de aprovar a medição.
+
+     `?w=320`  a largura a medir (sem ele, 320)
+     `?ate=N`  até onde o piloto anda; `ate=0` deixa a CAPA na tela, que é
+               uma das telas a medir
+     ====================================================================== -->
+<iframe id="quadro" style="height:1000px"></iframe>
+
+<script>
+(function () {
+  'use strict';
+
+  var larguraPedida = parseInt((location.search.match(/w=(\d+)/) || [])[1], 10) || 320;
+  var ate = (location.search.match(/ate=(\d+)/) || [])[1];
+  var q = document.getElementById('quadro');
+  q.style.width = larguraPedida + 'px';
+
+  function medir() {
+    var d = q.contentDocument, w = q.contentWindow;
+    if (!d || !d.body) { document.title = 'SEM ACESSO AO QUADRO'; return; }
+
+    var largura = d.documentElement.clientWidth;
+    var rolagem = d.documentElement.scrollWidth;
+    var largos = [];
+    var todos = d.querySelectorAll('.palco *');
+    for (var i = 0; i < todos.length; i++) {
+      var r = todos[i].getBoundingClientRect();
+      if (r.width > largura + 1 || r.right > largura + 1) {
+        largos.push((todos[i].className || todos[i].tagName) + '=' + Math.round(r.width));
+      }
+    }
+    var titulo = w.document.querySelector('#titulo-capa') ? 'capa'
+               : w.document.querySelector('#titulo-evento') ? 'evento'
+               : w.document.querySelector('#titulo-avatar') ? 'avatar'
+               : 'NADA';
+    document.title = 'quadro=' + largura + 'px · rolagem=' + rolagem +
+      ' · excedem=' + (largos.length ? largos.join(', ') : 'nenhum') +
+      ' · tela=' + titulo;
+  }
+
+  /* Espera a carga DO QUADRO, e não a desta página: o src é atribuído aqui e
+     o `load` de fora já pode ter passado. */
+  q.addEventListener('load', function () { setTimeout(medir, 1200); });
+  q.src = 'teste-avatares.html?avatar=av2' + (ate === undefined ? '&ate=4' : '&ate=' + ate);
+})();
+</script>
+</body>
+</html>

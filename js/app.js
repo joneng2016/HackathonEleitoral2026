@@ -82,7 +82,7 @@
      renderizar, de modo que um segundo toque no mesmo instante encontra a
      tela já trocada e é ignorado. */
   var estado = {
-    tela: 'avatar',
+    tela: 'capa',
     avatar: null,
     origem: null,
     personagem: null,
@@ -326,6 +326,11 @@
     var contador = $('#contador');
     var f = faseAtual();
 
+    /* O cabeçalho vivo mentiria sobre um jogo que ainda não começou: a capa é
+       a única tela sem contador, sem trilha, sem ficha e sem índice. */
+    var cab = $('.cabecalho');
+    if (cab) cab.hidden = (estado.tela === 'capa');
+
     if (estado.tela === 'avatar') {
       contador.innerHTML = 'Criação de personagem';
     } else if (estado.tela === 'origem') {
@@ -346,6 +351,39 @@
     renderizarTrilha();
     renderizarFicha();
     renderizarIndice();
+  }
+
+  /* --- Tela: a capa ------------------------------------------------- */
+  /* A capa é a única tela que não pede nada: ela se apresenta e sai. Não tem
+     botão — qualquer tecla e qualquer toque servem —, e por isso não há nada
+     nela que possa ser mal clicado. */
+  function telaCapa() {
+    $('#palco').innerHTML = '' +
+      '<section class="capa entra">' +
+        '<figure class="capa__figura" role="img" aria-label="' +
+          'A seção eleitoral, a fila de eleitores de costas, a urna com a ' +
+          'cédula na fenda e, sobre a rua, o medalhão da Justiça com a balança.">' +
+          (typeof window.ilustracaoDaCapa === 'function'
+            ? window.ilustracaoDaCapa() : '') +
+        '</figure>' +
+        '<div class="capa__texto">' +
+          '<p class="capa__rotulo">Um jogo de decisão sobre o dia da eleição</p>' +
+          '<h1 class="capa__titulo" id="titulo-capa" tabindex="-1">' +
+            'Ilícitos em Jogo</h1>' +
+          '<p class="capa__chamada">O que você faz no dia da eleição?</p>' +
+          '<p class="capa__sinopse">Você tem dezenove anos, acaba de tirar o ' +
+            'título de eleitor e é candidato pela primeira vez. São duas ' +
+            'candidaturas, seis circunstâncias no dia da eleição e quatro ' +
+            'condutas em cada uma — e nenhuma tela diz qual delas é lícita. ' +
+            'Esse julgamento é seu, e é ele que decide se a sua candidatura ' +
+            'sobrevive ao pleito.</p>' +
+          '<p class="capa__dica">Toque na tela, clique ou pressione qualquer ' +
+            'tecla para começar</p>' +
+        '</div>' +
+      '</section>';
+
+    var t = $('#titulo-capa');
+    if (t) t.focus({ preventScroll: true });
   }
 
   /* --- Tela: escolha do avatar (RF-14 / RF-15) --------------------- */
@@ -528,6 +566,28 @@
 
     var passo = (estado.etapaEvento === 'resultado') ? 'O dia começa' : 'A reta final';
 
+    /* A imagem do evento traz as DUAS abordagens, lado a lado. Antes da
+       escolha ela é só a descrição do que cada opção é; depois dela, o painel
+       escolhido fica aceso e o outro recebe um véu — o jogador precisa
+       continuar sabendo em qual das duas conduções ele está. */
+    var figura = '';
+    if (typeof window.ilustracaoDoEvento === 'function') {
+      var abordagemEscolhida = null;
+      if (estado.evento.abordagem) {
+        for (var i = 0; i < ev.abordagens.length; i++) {
+          if (ev.abordagens[i].id === estado.evento.abordagem.id) {
+            abordagemEscolhida = i;
+            break;
+          }
+        }
+      }
+      figura = '' +
+        '<figure class="evento__figura" role="img" aria-label="' +
+            escapar(ev.descricaoImagem || ev.titulo) + '">' +
+          window.ilustracaoDoEvento(ev, estado.avatar, abordagemEscolhida) +
+        '</figure>';
+    }
+
     $('#palco').innerHTML = '' +
       '<article class="evento entra">' +
         '<p class="cena__rotulo">Fase ' + f.numero + ' · ' + escapar(f.cargo) +
@@ -541,6 +601,7 @@
         '<h1 class="cena__titulo" id="titulo-evento" tabindex="-1">' +
           escapar(ev.titulo) + '</h1>' +
         '<p class="cena__enunciado">' + escapar(ev.mestre) + '</p>' +
+        figura +
         corpo +
       '</article>';
 
@@ -1095,7 +1156,7 @@
 
   function iniciar() {
     limparAnimacao();
-    estado.tela = 'avatar';
+    estado.tela = 'capa';
     estado.avatar = null;
     estado.origem = null;
     estado.personagem = null;
@@ -1113,6 +1174,17 @@
     estado.ultimaFaseImpugnada = false;
     ordemAtual = null;
     cenaDaOrdem = null;
+    renderizarCabecalho();
+    telaCapa();
+    window.scrollTo(0, 0);
+  }
+
+  /* A capa sai por qualquer tecla e por qualquer toque. A troca da tela vem
+     ANTES de renderizar, como em toda transição: a segunda tecla de uma
+     rajada encontra a tela já trocada e é ignorada. */
+  function abrirCriacao() {
+    if (estado.tela !== 'capa') return;
+    estado.tela = 'avatar';
     renderizarCabecalho();
     telaAvatar();
     window.scrollTo(0, 0);
@@ -1380,6 +1452,9 @@
   document.addEventListener('click', function (ev) {
     if (!ev.target.closest) return;
 
+    /* Na capa, qualquer toque serve — inclusive fora dela. */
+    if (estado.tela === 'capa') { abrirCriacao(); return; }
+
     var av = ev.target.closest('.avatar');
     if (av) { escolherAvatar(av.getAttribute('data-avatar')); return; }
 
@@ -1411,6 +1486,24 @@
        a tecla acionaria o botão E o atalho, duas vezes. */
     var emBotao = document.activeElement &&
                   document.activeElement.tagName === 'BUTTON';
+
+    /* A capa sai com qualquer tecla de entrada — inclusive Tab e Esc: não há
+       navegação a preservar numa tela cujo único caminho é sair dela.
+
+       As exceções são as teclas que não são entrada de nada: as que só
+       modificam outras (Shift, Control…), as de trava (CapsLock…) e as de
+       função. Roubar o F5 de quem quer recarregar a página, ou o F12 de quem
+       quer abrir o inspetor, seria prender o jogador na capa. */
+    var TECLAS_QUE_NAO_ENTRAM = {
+      Shift: 1, Control: 1, Alt: 1, Meta: 1, AltGraph: 1,
+      CapsLock: 1, NumLock: 1, ScrollLock: 1
+    };
+    if (estado.tela === 'capa') {
+      if (TECLAS_QUE_NAO_ENTRAM[ev.key] || /^F\d+$/.test(ev.key)) return;
+      ev.preventDefault();
+      abrirCriacao();
+      return;
+    }
 
     if (estado.tela === 'avatar') {
       var k = ['1', '2', '3', '4'].indexOf(ev.key);
@@ -1670,6 +1763,7 @@
     impugnada: impugnada,
     situacaoDaFase: situacaoDaFase,
     conquistas: conquistas,
+    abrirCriacao: abrirCriacao,
     escolherAvatar: escolherAvatar,
     escolherOrigem: escolherOrigem,
     comecar: comecarCampanha,
