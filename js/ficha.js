@@ -1,19 +1,23 @@
 /* =============================================================================
- * FICHA DO PERSONAGEM — a camada de RPG
+ * FICHA DO CANDIDATO — a experiência da campanha
  * -----------------------------------------------------------------------------
  * Este arquivo faz duas coisas, e só duas:
  *
- *   1. REGRAS  (window.RPG)    — atributos, experiência, níveis, legitimidade,
- *                                caixa e a rolagem de d20.
- *   2. FICHA   (window.RPGUI)  — a folha de personagem em HTML: o resumo que
- *                                acompanha a partida, a ficha completa das telas
- *                                de criação e de resultado, o inventário do dia
- *                                e o dado.
+ *   1. REGRAS  (window.RPG)    — a experiência e os níveis que ela abre.
+ *   2. FICHA   (window.RPGUI)  — a folha do candidato em HTML: o resumo que
+ *                                acompanha a partida, a ficha das telas de
+ *                                criação e de resultado, e o inventário do dia.
+ *
+ * A CAMPANHA TEM UM NÚMERO SÓ, E ELE É A EXPERIÊNCIA. A conduta conforme
+ * rende experiência; o ilícito devolve. Não há atributo, não há dado, não há
+ * dinheiro e não há prestígio: quanto mais o candidato acerta, mais alto ele
+ * chega, e quanto mais ele erra, mais ele recua — e é isso, do começo ao fim,
+ * que faz o personagem avançar.
  *
  * O QUE ESTE ARQUIVO NUNCA FAZ: julgar conduta. Nenhuma função daqui recebe
  * uma circunstância nem decide se uma escolha foi lícita. Quem classifica cada
  * conduta é o arquivo de dados, no campo `natureza`; quem aplica a
- * consequência é js/app.js. Os números daqui governam a CAMPANHA — nunca a
+ * consequência é js/app.js. O número daqui governa a CAMPANHA — nunca a
  * licitude, e nunca a contagem de ilícitos, que tem medidor próprio.
  *
  * Sem dependência externa, sem framework, sem build (RNF-02).
@@ -22,9 +26,8 @@
 (function () {
   'use strict';
 
-  var ATRIBUTOS = window.ATRIBUTOS || [];
-  var NIVEIS    = window.NIVEIS    || [];
-  var REGRAS    = window.REGRAS    || { xp: {}, legitimidade: {}, evento: {} };
+  var NIVEIS = window.NIVEIS || [];
+  var REGRAS = window.REGRAS || { xp: {} };
 
   /* --------------------------------------------------------------- APOIO */
   function limitar(v, min, max) { return Math.max(min, Math.min(max, v)); }
@@ -33,20 +36,6 @@
     return String(txt).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
-  }
-
-  function moeda(v) {
-    /* Separador de milhar sem depender de toLocaleString: o agrupamento
-       varia com o locale do navegador e o valor aqui é sempre em reais. */
-    var s = String(Math.round(v));
-    return 'R$ ' + s.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  }
-
-  function atributoDe(chave) {
-    for (var i = 0; i < ATRIBUTOS.length; i++) {
-      if (ATRIBUTOS[i].chave === chave) return ATRIBUTOS[i];
-    }
-    return null;
   }
 
   /* =========================================================================
@@ -82,23 +71,15 @@
     return limitar(Math.round(((xp - n.piso) / faixa) * 100), 0, 100);
   }
 
-  /* Cria a ficha a partir do avatar escolhido e da origem escolhida. */
+  /* Cria a ficha a partir do retrato escolhido e da história escolhida. A
+     origem entra como texto — quem o candidato é —, e não como número: nenhuma
+     origem começa com vantagem sobre as outras. */
   function novoPersonagem(avatar, origem) {
-    var atrs = {};
-    for (var i = 0; i < ATRIBUTOS.length; i++) {
-      var ch = ATRIBUTOS[i].chave;
-      atrs[ch] = (origem && origem.atributos && typeof origem.atributos[ch] === 'number')
-        ? origem.atributos[ch] : 1;
-    }
-
     return {
       avatar: avatar || null,
       origem: origem || null,
-      atributos: atrs,
       xp: 0,
       nivel: nivelDe(0).nivel,
-      legitimidade: (REGRAS.legitimidade && REGRAS.legitimidade.inicial) || 50,
-      caixa: (origem && origem.caixa) || 0,
       diario: []
     };
   }
@@ -107,28 +88,21 @@
      jogador refaz uma fase: a campanha daquela fase volta ao estado em que
      estava antes dela começar. A lição aprendida, essa, não volta atrás. */
   function copiar(p) {
-    var atrs = {};
-    for (var k in p.atributos) {
-      if (Object.prototype.hasOwnProperty.call(p.atributos, k)) atrs[k] = p.atributos[k];
-    }
     return {
       avatar: p.avatar,
       origem: p.origem,
-      atributos: atrs,
       xp: p.xp,
       nivel: p.nivel,
-      legitimidade: p.legitimidade,
-      caixa: p.caixa,
       diario: p.diario.slice()
     };
   }
 
-  /* Aplica os efeitos de qualquer fonte (evento de campanha, julgamento) e
-     devolve o deltas REALMENTE aplicado — depois dos limites. Se a
-     legitimidade já estava em 100, um ganho de 14 aparece como 0, e não como
-     14: mostrar o número grande seria mentir sobre a ficha. */
+  /* Aplica os efeitos de uma conduta e devolve o delta REALMENTE aplicado —
+     depois dos limites. Se a campanha já estava sem experiência, um prejuízo
+     de 40 aparece como 0, e não como 40: mostrar o número grande seria mentir
+     sobre a ficha. A experiência nunca fica negativa. */
   function aplicarEfeitos(p, efeitos) {
-    var d = { xp: 0, legitimidade: 0, caixa: 0, subiuNivel: false, nivel: null };
+    var d = { xp: 0, subiuNivel: false, desceuNivel: false, nivel: null };
     if (!efeitos) return d;
 
     var nivelAntes = nivelDe(p.xp).nivel;
@@ -138,19 +112,10 @@
       d.xp = novoXp - p.xp;
       p.xp = novoXp;
     }
-    if (efeitos.legitimidade) {
-      var alvoL = limitar(p.legitimidade + efeitos.legitimidade, 0, 100);
-      d.legitimidade = alvoL - p.legitimidade;
-      p.legitimidade = alvoL;
-    }
-    if (efeitos.caixa) {
-      var alvoC = Math.max(0, p.caixa + efeitos.caixa);
-      d.caixa = alvoC - p.caixa;
-      p.caixa = alvoC;
-    }
 
     var nivelDepois = nivelDe(p.xp);
     d.subiuNivel = nivelDepois.nivel > nivelAntes;
+    d.desceuNivel = nivelDepois.nivel < nivelAntes;
     d.nivel = nivelDepois;
     p.nivel = nivelDepois.nivel;
     return d;
@@ -160,59 +125,18 @@
      `natureza` é 'conforme', 'vedacao' ou 'crime' — e é ela, e só ela, que
      determina o que a ficha ganha ou perde.
 
-     A CONDUTA CONFORME é a que mais rende: XP cheio e ganho de legitimidade.
-     A VEDADA custa legitimidade sem ser crime. A CRIMINOSA custa mais, e rende
-     a menor experiência do jogo — porque o que se aprende errando não pode
-     valer tanto quanto o que se acerta.
+     A CONDUTA CONFORME É A ÚNICA QUE RENDE: +40 de experiência. O ilícito
+     devolve, e devolve mais quanto mais grave ele é — a conduta vedada custa
+     20, o crime custa 40. O sinal é a lição: acertar soma, errar subtrai.
 
      Nada aqui conta ilícitos: quem faz essa conta é o índice, em js/app.js, a
      partir da natureza registrada na escolha. A ficha e o índice são dois
      medidores distintos, e é importante que continuem sendo — um mede a
      campanha, o outro mede a conduta. */
   function aplicarJulgamento(p, natureza) {
-    var R = REGRAS;
-    var d = aplicarEfeitos(p, {
-      xp: R.xp[natureza],
-      legitimidade: R.legitimidade[natureza]
-    });
+    var d = aplicarEfeitos(p, { xp: REGRAS.xp[natureza] });
     d.natureza = natureza;
     return d;
-  }
-
-  /* ------------------------------------------------------------ O DADO */
-  function rolarDado(faces) {
-    faces = faces || (REGRAS.evento && REGRAS.evento.faces) || 20;
-    return 1 + Math.floor(Math.random() * faces);
-  }
-
-  /* Resolve uma abordagem de evento de campanha contra o d20 já rolado.
-     Separado da rolagem para que o mesmo resultado possa ser recalculado
-     (útil em teste) sem sortear de novo. */
-  function resolverEvento(p, abordagem, d20) {
-    var mod = p.atributos[abordagem.atributo] || 0;
-    var total = d20 + mod;
-    var faixa;
-
-    /* O crítico e o desastre vêm do VALOR DO DADO, não do total: um 20 natural
-       é crítico mesmo que o atributo já bastasse, e um 1 natural é desastre
-       mesmo para quem tem atributo alto. É o que faz o dado importar. */
-    if (d20 === REGRAS.evento.critico)      faixa = 'critico';
-    else if (d20 === REGRAS.evento.desastre) faixa = 'desastre';
-    else if (total >= abordagem.cd)          faixa = 'sucesso';
-    else                                     faixa = 'falha';
-
-    var r = abordagem.resultados[faixa];
-
-    return {
-      d20: d20,
-      mod: mod,
-      total: total,
-      cd: abordagem.cd,
-      atributo: abordagem.atributo,
-      faixa: faixa,
-      texto: r.texto,
-      efeitos: r.efeitos || {}
-    };
   }
 
   /* =========================================================================
@@ -229,47 +153,6 @@
   function retrato(p) {
     if (typeof window.retratoDoAvatar !== 'function' || !p.avatar) return '';
     return window.retratoDoAvatar(p.avatar);
-  }
-
-  function atributosHtml(p, comResumo) {
-    return ATRIBUTOS.map(function (a) {
-      var v = p.atributos[a.chave] || 0;
-      return '' +
-        '<li class="atr' + (comResumo ? ' atr--longo' : '') + '">' +
-          '<span class="atr__icone" aria-hidden="true">' + escapar(a.icone) + '</span>' +
-          '<span class="atr__texto">' +
-            '<span class="atr__nome">' + escapar(comResumo ? a.nome : a.abrev) + '</span>' +
-            (comResumo ? '<span class="atr__resumo">' + escapar(a.resumo) + '</span>' : '') +
-          '</span>' +
-          '<b class="atr__valor" title="' + escapar(a.nome) + '">' + v + '</b>' +
-        '</li>';
-    }).join('');
-  }
-
-  /* A legitimidade é o único recurso que muda de cor conforme o valor: ela é o
-     termômetro da campanha, e um número baixo precisa ser legível como
-     problema, não como mais um número. */
-  function faixaDeLegitimidade(v) {
-    if (v >= 65) return 'alto';
-    if (v >= 35) return 'medio';
-    return 'baixo';
-  }
-
-  /* Os dois recursos da campanha. O terceiro medidor do jogo — o índice de
-     ilícitos — não mora aqui: ele conta condutas, e não recursos, e tem o
-     próprio lugar no cabeçalho (ver js/app.js). Misturar os dois faria parecer
-     que cometer um ilícito é só perder pontos de campanha. */
-  function recursosHtml(p) {
-    return '' +
-      '<span class="rec rec--largo" data-nivel="' + faixaDeLegitimidade(p.legitimidade) + '">' +
-        '<span class="rec__nome">Legitimidade</span>' +
-        barra(p.legitimidade) +
-        '<b class="rec__valor">' + p.legitimidade + '</b>' +
-      '</span>' +
-      '<span class="rec">' +
-        '<span class="rec__nome">Caixa</span>' +
-        '<b class="rec__valor">' + escapar(moeda(p.caixa)) + '</b>' +
-      '</span>';
   }
 
   /* --- Resumo que acompanha a partida ------------------------------- */
@@ -299,17 +182,15 @@
           (n.maximo ? p.xp + ' XP · nível máximo'
                     : p.xp + ' / ' + n.teto + ' XP') +
         '</span>' +
-      '</div>' +
-
-      '<ul class="ficha__atributos">' + atributosHtml(p, false) + '</ul>' +
-
-      '<div class="ficha__recursos">' + recursosHtml(p) + '</div>';
+      '</div>';
   }
 
-  /* --- Ficha completa (criação e resultado) ------------------------- */
+  /* --- Ficha completa (resultado) ----------------------------------- */
   function fichaCompleta(p, ctx) {
     ctx = ctx || {};
     var n = nivelDe(p.xp);
+    var cargo = ctx.cargo
+      ? '<p class="ficha-cheia__cargo">' + escapar(ctx.cargo) + '</p>' : '';
 
     return '' +
       '<section class="ficha-cheia">' +
@@ -322,6 +203,7 @@
               escapar(p.origem ? p.origem.nome : '—') + '</p>' +
             (p.origem ? '<p class="ficha-cheia__lema">' +
               escapar(p.origem.lema) + '</p>' : '') +
+            cargo +
           '</div>' +
           '<div class="ficha-cheia__nivel">' +
             '<p class="ficha-cheia__nivel-num">Nível ' + n.nivel + '</p>' +
@@ -333,10 +215,6 @@
             '<p class="ficha-cheia__nota">' + escapar(n.nota) + '</p>' +
           '</div>' +
         '</div>' +
-
-        '<div class="ficha-cheia__recursos">' + recursosHtml(p) + '</div>' +
-
-        '<ul class="ficha-cheia__atributos">' + atributosHtml(p, true) + '</ul>' +
       '</section>';
   }
 
@@ -365,62 +243,22 @@
       '</div>';
   }
 
-  /* --- O dado -------------------------------------------------------- */
-  var HEX = [[60, 10], [16.7, 35], [16.7, 85], [60, 110], [103.3, 85], [103.3, 35]];
-
-  function pontos(lista) {
-    return lista.map(function (p) { return p[0] + ',' + p[1]; }).join(' ');
-  }
-
-  /* Um d20 visto de frente: o hexágono externo, o triângulo voltado para cima
-     e o voltado para baixo. O número fica na face central. */
-  function dado(valor, estado) {
-    estado = estado || 'parado';
-    var mostrado = (valor === null || valor === undefined) ? '?' : String(valor);
-
-    return '' +
-      '<svg class="dado" data-estado="' + escapar(estado) + '" viewBox="0 0 120 120" ' +
-           'width="120" height="120" xmlns="http://www.w3.org/2000/svg" ' +
-           'role="img" aria-label="' +
-           (valor === null || valor === undefined
-             ? 'Dado de vinte faces, ainda não rolado'
-             : 'Dado de vinte faces: ' + mostrado) + '">' +
-        '<polygon class="dado__face" points="' + pontos(HEX) + '"/>' +
-        '<polygon class="dado__linha" points="60,10 16.7,85 103.3,85"/>' +
-        '<polygon class="dado__linha" points="60,110 16.7,35 103.3,35"/>' +
-        '<text class="dado__numero" x="60" y="60" text-anchor="middle" ' +
-              'dominant-baseline="central">' + escapar(mostrado) + '</text>' +
-      '</svg>';
-  }
-
-  /* --- Efeitos aplicados --------------------------------------------- */
+  /* --- Efeitos aplicados ---------------------------------------------
+     Um efeito só, agora: a experiência. O chip aparece SEMPRE, inclusive
+     quando o delta é zero — se a campanha não tinha mais experiência a
+     perder, o "0 XP" ao lado da conduta ilícita diz exatamente isso, e é
+     melhor dizê-lo do que esconder o efeito. */
   function efeitos(d) {
     if (!d) return '';
-    var partes = [];
 
-    /* O sinal define a cor, não o tipo de recurso: perder legitimidade não
-       pode aparecer em verde só porque "legitimidade" é um recurso bom. */
-    function sinal(v) { return v > 0 ? 'mais' : 'menos'; }
+    var sinal = d.xp > 0 ? 'mais' : (d.xp < 0 ? 'menos' : 'zero');
+    var texto = d.xp > 0 ? '+' + d.xp + ' XP'
+              : (d.xp < 0 ? '−' + Math.abs(d.xp) + ' XP' : '0 XP');
 
-    if (d.xp) {
-      partes.push('<span class="efeito efeito--xp" data-sinal="' + sinal(d.xp) + '">' +
-                  (d.xp > 0 ? '+' : '') + d.xp + ' XP</span>');
-    }
-    if (d.legitimidade) {
-      partes.push('<span class="efeito efeito--leg" data-sinal="' +
-                  sinal(d.legitimidade) + '">' +
-                  (d.legitimidade > 0 ? '+' : '') + d.legitimidade +
-                  ' legitimidade</span>');
-    }
-    if (d.caixa) {
-      partes.push('<span class="efeito efeito--caixa" data-sinal="' +
-                  sinal(d.caixa) + '">' +
-                  (d.caixa > 0 ? '+' : '−') + escapar(moeda(Math.abs(d.caixa))) +
-                  '</span>');
-    }
-    if (!partes.length) return '';
-
-    return '<p class="efeitos">' + partes.join('') + '</p>';
+    return '<p class="efeitos">' +
+             '<span class="efeito efeito--xp" data-sinal="' + sinal + '">' +
+               texto + '</span>' +
+           '</p>';
   }
 
   /* ========================================================================= */
@@ -430,18 +268,13 @@
     novoPersonagem: novoPersonagem,
     copiar: copiar,
     aplicarEfeitos: aplicarEfeitos,
-    aplicarJulgamento: aplicarJulgamento,
-    rolarDado: rolarDado,
-    resolverEvento: resolverEvento,
-    atributoDe: atributoDe,
-    moeda: moeda
+    aplicarJulgamento: aplicarJulgamento
   };
 
   window.RPGUI = {
     hud: hud,
     fichaCompleta: fichaCompleta,
     inventario: inventario,
-    dado: dado,
     efeitos: efeitos,
     barra: barra,
     escapar: escapar

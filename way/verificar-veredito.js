@@ -1,11 +1,11 @@
 /* =============================================================================
  * VERIFICADOR DO VEREDITO — meio de conferência, não parte do jogo
  * -----------------------------------------------------------------------------
- * O veredito é a MAIORIA DOS ATOS: mais atos lícitos, candidatura deferida;
- * mais atos ilícitos, candidatura indeferida. Esta bateria percorre TODAS as
- * combinações de escolha das duas fases — 4^3 = 64 em cada uma, 128 no total —
- * e confere, combinação a combinação, que a decisão que o jogo toma é a que a
- * regra manda.
+ * O veredito é o NÚMERO DE ILÍCITOS: nenhum ou um, candidatura deferida — com
+ * um, com advertência; dois ou mais, candidatura indeferida. Esta bateria
+ * percorre TODAS as combinações de escolha das duas fases — 4^3 = 64 em cada
+ * uma, 128 no total — e confere, combinação a combinação, que a decisão que o
+ * jogo toma é a que a regra manda.
  *
  * Ela carrega dados/cenas.js, js/ficha.js e js/app.js na mesma ordem do
  * index.html, num contexto de node com um DOM de mentira: o app.js registra o
@@ -82,9 +82,14 @@ var JOGO = janela.JOGO;
 var FASES = janela.FASES;
 var JUIZA = janela.JUIZA;
 
+/* O LIMITE do jogo: um ilícito. A bateria o declara em vez de o importar para
+   que a conferência valha por si — se o app.js mudar de limite sem que a
+   regra escrita mude, é aqui que a divergência aparece. */
+var LIMITE_ILICITOS = 1;
+
 var falhas = [];
 var conferencias = 0;
-var contaBlocos = { semIlicito: 0, umIlicito: 0, maioriaIlicita: 0 };
+var contaBlocos = { semIlicito: 0, umIlicito: 0, doisOuMaisIlicitos: 0 };
 var contaVeredito = { deferida: 0, indeferida: 0 };
 
 function conferir(condicao, mensagem) {
@@ -112,7 +117,7 @@ conferir(typeof JUIZA === 'object' && JUIZA !== null,
 conferir(typeof JUIZA.regra === 'string' && JUIZA.regra.length > 0,
   'JUIZA.regra não está declarada: o jogador não tem como ler a regra.');
 
-['semIlicito', 'umIlicito', 'maioriaIlicita'].forEach(function (chave) {
+['semIlicito', 'umIlicito', 'doisOuMaisIlicitos'].forEach(function (chave) {
   var b = JUIZA[chave];
   conferir(!!b, 'JUIZA.' + chave + ' não existe.');
   if (!b) return;
@@ -129,10 +134,10 @@ conferir(typeof JUIZA.regra === 'string' && JUIZA.regra.length > 0,
 conferir(JUIZA.semIlicito.rotulo === 'Candidatura deferida',
   'JUIZA.semIlicito.rotulo não é "Candidatura deferida".');
 conferir(JUIZA.umIlicito.rotulo === 'Candidatura deferida',
-  'JUIZA.umIlicito.rotulo não é "Candidatura deferida" — a maioria lícita ' +
-  'com um ilícito no registro continua sendo um registro deferido.');
-conferir(JUIZA.maioriaIlicita.rotulo === 'Candidatura indeferida',
-  'JUIZA.maioriaIlicita.rotulo não é "Candidatura indeferida".');
+  'JUIZA.umIlicito.rotulo não é "Candidatura deferida" — o registro com um ' +
+  'ilícito continua sendo um registro deferido, ainda que advertido.');
+conferir(JUIZA.doisOuMaisIlicitos.rotulo === 'Candidatura indeferida',
+  'JUIZA.doisOuMaisIlicitos.rotulo não é "Candidatura indeferida".');
 
 /* --- 2. As fases --------------------------------------------------------- */
 conferir(Array.isArray(FASES) && FASES.length > 0,
@@ -141,15 +146,12 @@ conferir(Array.isArray(FASES) && FASES.length > 0,
 FASES.forEach(function (fase, i) {
   var atos = JOGO.situacoesDaFase(i).length;
   conferir(atos > 0, 'A fase ' + (i + 1) + ' não tem circunstâncias.');
-  /* Com um número par de atos, a maioria pode empatar — e a regra não diz o
-     que fazer no empate. O jogo se recusa a abrir nesse caso; aqui a bateria
-     registra o mesmo. */
-  conferir(atos % 2 === 1,
-    'A fase ' + (i + 1) + ' tem ' + atos + ' atos, e um número par deles ' +
-    'permite empate.');
-  conferir(fase.tolera === Math.floor((atos - 1) / 2),
-    'A fase ' + (i + 1) + ' declara tolerar ' + fase.tolera + ', e a maioria ' +
-    'de ' + atos + ' atos dá ' + Math.floor((atos - 1) / 2) + '.');
+  /* A fase declara o mesmo limite que o jogo aplica. Um limite por fase não
+     faria sentido com a regra nova — a conta é a mesma em qualquer cargo —, e
+     por isso a declaração é conferida contra a constante. */
+  conferir(fase.tolera === LIMITE_ILICITOS,
+    'A fase ' + (i + 1) + ' declara tolerar ' + fase.tolera + ', e o limite ' +
+    'do jogo é ' + LIMITE_ILICITOS + '.');
 });
 
 /* --- 3. Todas as combinações de escolha, nas duas fases ------------------ */
@@ -199,11 +201,15 @@ FASES.forEach(function (fase, i) {
       l + ' lícitos não somam os ' + atos + ' atos.');
     conferir(n <= atos && l >= 0, 'Contagem impossível na fase ' + (indiceFase + 1) + '.');
 
-    /* A REGRA. É esta linha que a bateria existe para conferir. */
-    conferir(indeferida === (n > l),
-      'Fase ' + (indiceFase + 1) + ' · ' + rotulo + ': ' + n + ' ilícitos ' +
-      'contra ' + l + ' lícitos, e o jogo ' +
-      (indeferida ? 'indeferiu' : 'deferiu') + ' — a maioria manda o contrário.');
+    /* A REGRA. É esta linha que a bateria existe para conferir: indeferida
+       quando os ilícitos PASSAM do limite. Com três circunstâncias por fase,
+       passar do limite equivale a ter mais ilícitos que lícitos — as duas
+       contas coincidem aqui, e é por isso que a bateria confere o LIMITE, e
+       não a proporção: o limite é a regra, e a coincidência é do dado. */
+    conferir(indeferida === (n > LIMITE_ILICITOS),
+      'Fase ' + (indiceFase + 1) + ' · ' + rotulo + ': ' + n + ' ilícitos e ' +
+      l + ' lícitos, e o jogo ' + (indeferida ? 'indeferiu' : 'deferiu') +
+      ' — com o limite em ' + LIMITE_ILICITOS + ', o veredito era o outro.');
 
     /* A declaração da fase não pode discordar da contagem. */
     conferir(indeferida === (n > fase.tolera),
@@ -221,7 +227,8 @@ FASES.forEach(function (fase, i) {
       estado + '".');
 
     /* O TEXTO ESCOLHIDO. A seleção é a mesma que a tela do julgamento faz. */
-    var bloco = n === 0 ? 'semIlicito' : (indeferida ? 'maioriaIlicita' : 'umIlicito');
+    var bloco = n === 0 ? 'semIlicito'
+              : (indeferida ? 'doisOuMaisIlicitos' : 'umIlicito');
     var dados = JUIZA[bloco];
     conferir(!!dados && dados.veredito === (indeferida ? 'indeferida' : 'deferida'),
       'Fase ' + (indiceFase + 1) + ' · ' + rotulo + ': o bloco JUIZA.' + bloco +
@@ -249,4 +256,4 @@ console.log('vereditos: ' + contaVeredito.deferida + ' deferidas · ' +
   contaVeredito.indeferida + ' indeferidas');
 console.log('textos: ' + contaBlocos.semIlicito + ' sem ilícito · ' +
   contaBlocos.umIlicito + ' com um ilícito · ' +
-  contaBlocos.maioriaIlicita + ' com maioria ilícita');
+  contaBlocos.doisOuMaisIlicitos + ' com dois ou mais');

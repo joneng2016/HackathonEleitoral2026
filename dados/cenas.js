@@ -152,23 +152,19 @@ window.AVATARES = [
  * -----------------------------------------------------------------------------
  * `tolera`: quantos ilícitos a candidatura suporta antes de ser INDEFERIDA.
  * Com `tolera: 1`, UM ilícito ainda permite concorrer — a juíza o registra no
- * relatório — e DOIS indeferem o registro.
- *
- * O veredito é a maioria dos atos, e `tolera` é a declaração da fase sobre
- * esse mesmo limite: com três circunstâncias, o limite da maioria é um. Os
- * dois números dizem a mesma coisa, e o jogo se recusa a abrir quando
- * discordam — quem decide é a contagem, e a declaração é conferida contra
- * ela. Declarar a tolerância aqui é o que permite ler a fase sem abrir o
- * app.js, e por isso ela fica.
+ * relatório e a candidatura passa com advertência — e DOIS indeferem o
+ * registro. O limite é o mesmo em todas as fases, e o jogo se recusa a abrir
+ * quando a declaração discorda dele: quem decide é a contagem de ilícitos, e
+ * a declaração é conferida contra ela. Declarar a tolerância aqui é o que
+ * permite ler a fase sem abrir o app.js, e por isso ela fica.
  *
  * `iliciosPorCena`: quantas das quatro condutas de cada cena são ilícitas.
  * Cresce com o cargo: a fase 1 oferece uma conduta ilícita por cena, e a fase
  * 2 oferece duas, na mesma proporção em que as situações do cargo maior se
  * aproximam do limite.
  *
- * `mestre` é a narração de abertura, na voz de quem conduz a mesa. `evento`
- * aponta para o evento de campanha que precede as circunstâncias (ver EVENTOS)
- * — e é por ele que a camada de RPG abre cada candidatura.
+ * `abertura` é a narração que apresenta a fase, logo antes da primeira
+ * circunstância dela.
  * ========================================================================== */
 window.FASES = [
   {
@@ -181,12 +177,11 @@ window.FASES = [
       'candidato a vereador do seu município. É dia de eleição e você vai ' +
       'votar — mas o dia reserva circunstâncias em que é preciso decidir o ' +
       'que fazer, e cada decisão tem preço.',
-    mestre:
+    abertura:
       'Nove dias atrás você tirou o título de eleitor. Hoje você é candidato, ' +
       'e o dia da eleição é uma prova que ninguém avisa que vai aplicar. São ' +
       'três circunstâncias, uma depois da outra, e por baixo de todas elas ' +
       'corre a mesma pergunta: o que você faz?',
-    evento: 'ev1',
     tolera: 1,
     iliciosPorCena: 1,
     situacoes: ['c01', 'c02', 'c03']
@@ -201,12 +196,11 @@ window.FASES = [
       'cadeira na Assembleia Legislativa. O cargo é maior, e as ' +
       'circunstâncias deste dia de eleição estão mais próximas do limite ' +
       'entre o que se pode fazer e o que é ilícito.',
-    mestre:
+    abertura:
       'Dois anos se passaram. Você é vereador, tem um mandato curto e uma ' +
       'Assembleia inteira pela frente. A campanha é maior, o dinheiro é ' +
       'maior, e as circunstâncias que este dia reserva chegaram mais perto da ' +
       'linha. As três perguntas continuam as mesmas — só ficaram mais caras.',
-    evento: 'ev2',
     tolera: 1,
     iliciosPorCena: 2,
     situacoes: ['c04', 'c05', 'c06']
@@ -902,22 +896,22 @@ window.PERGUNTAS_RESOLUCAO = [
  *
  * A REGRA DO VEREDITO
  * -----------------------------------------------------------------------------
- * O veredito é a MAIORIA DOS ATOS. Cada circunstância da fase vale um ato, o
+ * O veredito é o NÚMERO DE ILÍCITOS. Cada circunstância da fase vale um ato, o
  * ato é lícito ou ilícito, e a candidatura é:
  *
- *   mais atos lícitos   → DEFERIDA   (o registro passa, e ela concorre)
- *   mais atos ilícitos  → INDEFERIDA (o registro é negado, e a fase se refaz)
+ *   nenhum ilícito  → DEFERIDA   (o registro passa, e ela concorre)
+ *   um ilícito      → DEFERIDA   (passa com advertência, e o registro fica)
+ *   dois ou mais    → INDEFERIDA (o registro é negado, e a fase se refaz)
  *
- * Não é uma soma de gravidade nem um limiar de tolerância: é uma contagem, e
- * ela é dita ao jogador na tela do julgamento, com os dois números à vista.
- * Com três circunstâncias por fase, a maioria sempre existe — e `tolera`, na
- * fase, é a declaração desse mesmo limite, conferida contra a contagem.
+ * Não é uma soma de gravidade: é uma contagem, e ela é dita ao jogador na tela
+ * do julgamento, com o número à vista e o limite escrito ao lado. `tolera`, na
+ * fase, é a declaração desse mesmo limite — conferida contra a contagem.
  *
  * O QUE O JOGO COMPRIME, E O QUE ELE NÃO PODE COMPRIMIR
  * -----------------------------------------------------------------------------
- * No jogo, a candidatura é INDEFERIDA quando a maioria dos atos é ilícita —
- * automática e aritmeticamente, sem processo. Na lei, a impugnação não é
- * automática, e a diferença é grande:
+ * No jogo, a candidatura é INDEFERIDA a partir do segundo ilícito — automática
+ * e aritmeticamente, sem processo. Na lei, a impugnação não é automática, e a
+ * diferença é grande:
  *
  *   - A ação de impugnação de registro de candidatura (AIRC) tem assento no
  *     art. 3º da Lei Complementar nº 64/90, com prazo de 5 dias contados da
@@ -955,10 +949,10 @@ window.JUIZA = {
 
   /* A REGRA, ESCRITA PARA O JOGADOR. O veredito não pode ser uma surpresa
      que só o resultado revela: a conta é simples, e ela é dita na tela do
-     julgamento, ao lado dos dois números que a compõem. */
+     julgamento, ao lado do número que a compõe. */
   regra:
-    'A candidatura é deferida se a maioria dos seus atos for lícita, e ' +
-    'indeferida se a maioria for ilícita. Cada circunstância vale um ato.',
+    'Um ilícito, e a candidatura passa com advertência. Dois ilícitos ou ' +
+    'mais, e o registro é indeferido: o candidato não concorre.',
 
   /* --- Veredito: deferida, com nenhum ilícito ------------------------ */
   semIlicito: {
@@ -975,36 +969,36 @@ window.JUIZA = {
   },
 
   /* --- Veredito: deferida, com um ilícito no registro -----------------
-     A maioria continua lícita, e o veredito é o mesmo — deferida. O que muda
-     é o registro, e é ele que a fala trata: não é um terceiro veredito, é a
-     mesma candidatura deferida com uma mancha a mais. */
+     O limite é um, e ele foi alcançado sem ser ultrapassado: o veredito é o
+     mesmo — deferida. O que muda é a advertência, e é dela que a fala trata:
+     não é um terceiro veredito, é a mesma candidatura deferida com uma
+     mancha a mais. */
   umIlicito: {
     veredito: 'deferida',
     rotulo: 'Candidatura deferida',
-    titulo: 'Um ilícito: a candidatura passa, e o registro fica',
+    titulo: 'Um ilícito: passa com advertência',
     fala:
-      'A maioria dos seus atos foi lícita, e é a maioria que decide: a ' +
-      'candidatura concorre. Mas há uma conduta ilícita no relatório, e ela ' +
-      'não passa em branco — o registro do que aconteceu fica, e ele não ' +
-      'desaparece porque a eleição deu certo.' +
+      'Há uma conduta ilícita no relatório, e uma só. O limite é um: a ' +
+      'candidatura concorre, com advertência. Mas o registro do que ' +
+      'aconteceu fica, e ele não desaparece porque a eleição deu certo.' +
       '\n\n' +
       'Não é preciso mais do que uma vez para que uma campanha mude de ' +
       'natureza. O que você faz com o que ficou registrado é o que decide o ' +
       'resto: a mesma conduta repetida deixa de ser um acidente e passa a ser ' +
-      'um método.'
+      'um método — e o método é o que me obriga a indeferir.'
   },
 
-  /* --- Veredito: indeferida, com a maioria ilícita ------------------- */
-  maioriaIlicita: {
+  /* --- Veredito: indeferida, do segundo ilícito em diante ------------ */
+  doisOuMaisIlicitos: {
     veredito: 'indeferida',
     rotulo: 'Candidatura indeferida',
-    titulo: 'A maioria dos atos foi ilícita',
+    titulo: 'Dois ou mais ilícitos: o registro é indeferido',
     fala:
-      'A conta está fechada, e ela não me deixa alternativa: a maioria dos ' +
-      'atos desta candidatura é ilícita. Não foi um passo em falso — foi uma ' +
-      'campanha em que o ilícito deixou de ser exceção e passou a ser o ' +
-      'método, decisão após decisão, cada uma delas tomada por alguém que já ' +
-      'sabia o que a lei dizia.' +
+      'A conta está fechada, e ela não me deixa alternativa: esta candidatura ' +
+      'passou do limite. Não foi um passo em falso — foi uma campanha em que o ' +
+      'ilícito deixou de ser exceção e passou a ser o método, decisão após ' +
+      'decisão, cada uma delas tomada por alguém que já sabia o que a lei ' +
+      'dizia.' +
       '\n\n' +
       'Não é o número que decide a gravidade — é o que o número revela. ' +
       'Indefiro o registro. Você não concorre nesta eleição.' +
@@ -1016,19 +1010,19 @@ window.JUIZA = {
 
   /* --- Nota de honestidade intelectual ------------------------------- */
   nota:
-    'Nota do jogo: aqui, a conta decide — maioria de atos ilícitos, registro ' +
-    'indeferido; maioria de atos lícitos, registro deferido. Duas compressões ' +
-    'estão nessa frase. A primeira: na lei, essa automaticidade não existe. A ' +
+    'Nota do jogo: aqui, a conta decide — dois ilícitos ou mais, registro ' +
+    'indeferido; nenhum ou um, registro deferido. Duas compressões estão ' +
+    'nessa frase. A primeira: na lei, essa automaticidade não existe. A ' +
     'ação de impugnação de registro de candidatura está no art. 3º da Lei ' +
     'Complementar nº 64/90, com prazo e legitimados próprios, e a notícia de ' +
     'inelegibilidade por qualquer cidadão está no art. 97, § 3º, do Código ' +
     'Eleitoral. A inelegibilidade por crime eleitoral (art. 1º, I, "e", da ' +
     'LC 64/90) exige CONDENAÇÃO em decisão colegiada ou transitada em ' +
     'julgado — não basta ter praticado a conduta. Os efeitos do art. 15 da ' +
-    'LC 64/90 só vêm depois disso. A segunda: o jogo conta atos e não pesa ' +
-    'gravidades — um ilícito de cada lado vale o mesmo, e a lei não funciona ' +
-    'assim. O jogo comprime o caminho para caber numa tela; o caminho real ' +
-    'tem processo, contraditório e prazo.'
+    'LC 64/90 só vêm depois disso. A segunda: o jogo conta ilícitos e não ' +
+    'pesa gravidades — uma conduta vedada e um crime valem o mesmo no ' +
+    'registro, e a lei não funciona assim. O jogo comprime o caminho para ' +
+    'caber numa tela; o caminho real tem processo, contraditório e prazo.'
 };
 
 /* =============================================================================
@@ -1062,72 +1056,32 @@ window.SORTE = {
 };
 
 /* =============================================================================
- * CAMADA DE RPG — a campanha em volta do julgamento
+ * A EXPERIÊNCIA — o único medidor do jogo
  * -----------------------------------------------------------------------------
- * A CONDUTA decide a progressão; a CAMPANHA é o que o personagem atravessa
- * para chegar até ela. Esta camada não julga nada: nenhum atributo, nível ou
- * rolagem de dado decide se uma conduta é lícita, nem quantos ilícitos o
- * jogador cometeu. Essas duas coisas continuam saindo da escolha dele e só
- * dela.
+ * A CONDUTA é a única coisa que move a experiência. Não há atributo, não há
+ * dado, não há dinheiro: a conduta escolhida é lícita ou ilícita, e é isso, e
+ * só isso, que faz o candidato avançar ou recuar.
  *
- * O que a camada governa é outra coisa: quem o candidato é, de onde vem, o
- * que a campanha tem de dinheiro e de prestígio, e como isso se desgasta ao
- * longo dos dois pleitos.
+ * Esta camada não julga nada. Nenhum nível decide se uma conduta é lícita nem
+ * quantos ilícitos o jogador cometeu: o julgamento da candidatura sai do
+ * ÍNDICE, que conta ilícitos e tem medidor próprio. São dois medidores
+ * distintos, e é importante que continuem sendo — um mede a campanha, o outro
+ * mede a conduta.
  *
  * BLOCOS
- *   ATRIBUTOS  os quatro traços do candidato
- *   ORIGENS    de onde o candidato vem; define atributos e caixa inicial
+ *   ORIGENS    de onde o candidato vem (escolha narrativa)
  *   NIVEIS     a progressão de experiência
  *   ITENS      o que a campanha carrega no dia da eleição
- *   EVENTOS    os eventos de campanha, resolvidos por d20
- *   REGRAS     os números que governam a camada
+ *   REGRAS     a experiência que cada conduta rende
  * ========================================================================== */
-
-window.ATRIBUTOS = [
-  {
-    chave: 'discernimento',
-    nome: 'Discernimento',
-    abrev: 'DIS',
-    icone: '◉',
-    resumo:
-      'Ler a cena inteira antes de agir. Vale nas apostas da campanha — ' +
-      'nunca no julgamento da conduta, que continua sendo só seu.'
-  },
-  {
-    chave: 'carisma',
-    nome: 'Carisma',
-    abrev: 'CAR',
-    icone: '◈',
-    resumo:
-      'Falar para uma sala lotada e sair dela com gente disposta a trabalhar ' +
-      'no dia seguinte.'
-  },
-  {
-    chave: 'articulacao',
-    nome: 'Articulação',
-    abrev: 'ART',
-    icone: '⬡',
-    resumo:
-      'Máquina, contatos e caixa. Resolve o que a boa intenção sozinha não ' +
-      'resolve.'
-  },
-  {
-    chave: 'coragem',
-    nome: 'Coragem',
-    abrev: 'COR',
-    icone: '▲',
-    resumo:
-      'Fazer o que você já sabe que é certo quando todo mundo à volta acha ' +
-      'que é exagero.'
-  }
-];
 
 /* -----------------------------------------------------------------------------
  * ORIGENS — RF-14 ampliado
  * -----------------------------------------------------------------------------
- * Cada origem distribui os mesmos nove pontos entre os quatro atributos, de
- * modo que nenhuma seja "a melhor": a diferença é onde o candidato é forte,
- * e cada evento de campanha cobra um atributo diferente.
+ * A origem é a HISTÓRIA do cidadão, e não um conjunto de números. Nenhuma
+ * origem é melhor que as outras, porque nenhuma delas altera nada do jogo: o
+ * que muda é quem o jogador decide ser, e o texto que acompanha essa escolha.
+ * A conduta julgada no dia da eleição é a mesma para todas.
  * -------------------------------------------------------------------------- */
 window.ORIGENS = [
   {
@@ -1136,9 +1090,7 @@ window.ORIGENS = [
     descricao:
       'Terceiro período, Centro Acadêmico, noites inteiras lendo lei seca ' +
       'para uma prova que ainda vai demorar.',
-    lema: 'Você já leu o texto. Falta ver o texto acontecer.',
-    atributos: { discernimento: 4, carisma: 2, articulacao: 1, coragem: 2 },
-    caixa: 120
+    lema: 'Você já leu o texto. Falta ver o texto acontecer.'
   },
   {
     id: 'org2',
@@ -1146,9 +1098,7 @@ window.ORIGENS = [
     descricao:
       'Dez anos de associação de moradores, abaixo-assinado de calçada e ' +
       'reunião que só acaba quando alguém dá a luz da rua por consertada.',
-    lema: 'Você não precisa se apresentar ao bairro.',
-    atributos: { discernimento: 2, carisma: 4, articulacao: 2, coragem: 1 },
-    caixa: 90
+    lema: 'Você não precisa se apresentar ao bairro.'
   },
   {
     id: 'org3',
@@ -1156,9 +1106,7 @@ window.ORIGENS = [
     descricao:
       'Cresceu atrás do balcão ouvindo o bairro inteiro contar o que pensa ' +
       '— e quem paga a conta no fim do mês.',
-    lema: 'Você sabe quanto custa cada coisa, inclusive uma campanha.',
-    atributos: { discernimento: 1, carisma: 2, articulacao: 4, coragem: 2 },
-    caixa: 260
+    lema: 'Você sabe quanto custa cada coisa, inclusive uma campanha.'
   },
   {
     id: 'org4',
@@ -1166,26 +1114,28 @@ window.ORIGENS = [
     descricao:
       'Time de futebol, grupo de jovens, mutirão de fim de semana. Você ' +
       'cresceu ouvindo que o certo se faz mesmo quando ninguém está vendo.',
-    lema: 'Você aguenta a pressão de quem diz que todo mundo faz assim.',
-    atributos: { discernimento: 2, carisma: 1, articulacao: 2, coragem: 4 },
-    caixa: 140
+    lema: 'Você aguenta a pressão de quem diz que todo mundo faz assim.'
   }
 ];
 
 /* -----------------------------------------------------------------------------
  * NÍVEIS — a progressão da campanha
  * -----------------------------------------------------------------------------
- * O teto é 260 XP (cinco condutas conformes e uma de fronteira). Nível nenhum
- * altera o julgamento da conduta: a ficha cresce, o critério não.
+ * O teto é 240 XP: seis condutas conformes, e mais nada. Um candidato que
+ * atravessa as duas candidaturas sem um único ilícito chega exatamente ao
+ * último nível — e um que comete ilícitos não chega, porque cada ilícito
+ * DEVOLVE experiência em vez de render.
+ *
+ * Nível nenhum altera o julgamento da conduta: a ficha cresce, o critério não.
  * -------------------------------------------------------------------------- */
 window.NIVEIS = [
   { nivel: 1, titulo: 'Estreante', xp: 0,
     nota: 'Ninguém sabe o seu nome ainda.' },
   { nivel: 2, titulo: 'Candidato', xp: 80,
     nota: 'A campanha existe, e alguém já ouviu falar dela.' },
-  { nivel: 3, titulo: 'Veterano', xp: 170,
+  { nivel: 3, titulo: 'Veterano', xp: 160,
     nota: 'Você já viu o bastante para não se surpreender.' },
-  { nivel: 4, titulo: 'Estadista', xp: 250,
+  { nivel: 4, titulo: 'Estadista', xp: 240,
     nota: 'A campanha termina maior do que começou.' }
 ];
 
@@ -1220,215 +1170,12 @@ window.ITENS = {
 };
 
 window.REGRAS = {
-  /* experiência creditada por conduta escolhida */
-  xp: { conforme: 40, vedacao: 25, crime: 15 },
-  /* legitimidade: começa em 50, termina entre 0 e 100 */
-  legitimidade: { inicial: 50, conforme: 12, vedacao: -8, crime: -15 },
-  /* resolução do evento de campanha */
-  evento: { faces: 20, critico: 20, desastre: 1 }
+  /* Experiência por conduta escolhida. O SINAL é o que ensina: a conduta
+     conforme RENDE experiência, e o ilícito DEVOLVE — quanto mais grave, mais
+     devolve. A experiência nunca fica negativa: ela para em zero.
+
+     As duas naturezas ilícitas têm preços diferentes porque a lei as trata
+     diferentemente: 'vedacao' é a conduta que o § 1º do art. 39-A diz "É
+     vedada", e 'crime' é o que o art. 39, § 5º, pune com detenção. */
+  xp: { conforme: 40, vedacao: -20, crime: -40 }
 };
-
-/* =============================================================================
- * EVENTOS DE CAMPANHA — resolvidos por d20
- * -----------------------------------------------------------------------------
- * Cada evento oferece DUAS abordagens, e cada abordagem cobra um atributo
- * diferente. A escolha muda o atributo testado, não a legalidade de nada: as
- * duas abordagens são lícitas, e nenhuma delas é uma circunstância de jogo —
- * são decisões de logística de campanha, e é por isso que podem ser resolvidas
- * por dado.
- *
- * RESOLUÇÃO
- *   1 natural                     → desastre
- *   total (d20 + atributo) >= cd  → sucesso
- *   total < cd                    → falha
- *   20 natural                    → crítico
- *
- * `efeitos` aceita legitimidade, caixa e xp. Números negativos são despesa ou
- * desgaste; a legitimidade é limitada a 0–100 e a caixa nunca fica negativa.
- *
- * `cena` é a chave da ilustração da abordagem, em js/ilustracoes.js. A tela do
- * evento desenha as DUAS abordagens lado a lado, na ordem em que elas estão
- * aqui: a primeira leva o número 1, a segunda o número 2, os mesmos números
- * das teclas e dos botões. Trocar a ordem aqui troca os painéis da imagem.
- * ========================================================================== */
-window.EVENTOS = [
-  {
-    id: 'ev1',
-    fase: 'f1',
-    titulo: 'A reunião no salão do bairro',
-    descricaoImagem:
-      'Duas cenas lado a lado, numeradas 1 e 2. Na primeira, o candidato de ' +
-      'pé diante da plateia sentada, de braços abertos, falando sem papel na ' +
-      'mão. Na segunda, o candidato com o mapa de ruas do bairro aberto no ' +
-      'peito, e uma folha circulando entre as cadeiras.',
-    mestre:
-      'Faltam nove dias para a eleição. O salão da associação de moradores ' +
-      'está cheio: quarenta cadeiras de plástico, um ventilador que não dá ' +
-      'conta e três outros candidatos que também mandaram gente. A sua ' +
-      'candidatura é a menor da noite. Você tem uma hora para transformar ' +
-      'essa plateia em gente disposta a trabalhar amanhã.',
-    abordagens: [
-      {
-        id: 'ev1a',
-        nome: 'Subir na cadeira e falar de cabeça, sem papel na mão',
-        atributo: 'carisma',
-        cd: 12,
-        cena: 'salao',
-        resultados: {
-          critico: {
-            texto:
-              'Você fala doze minutos e ninguém olha para o celular. Quando ' +
-              'termina, três pessoas se levantam e vão até a mesa assinar a ' +
-              'lista de voluntários — e a sala inteira vê isso acontecer.',
-            efeitos: { legitimidade: 14, caixa: 60, xp: 30 }
-          },
-          sucesso: {
-            texto:
-              'Você fala oito minutos, se embola uma vez no meio e se ' +
-              'recupera. Aplauso morno, e quatro pessoas esperando você na ' +
-              'porta.',
-            efeitos: { legitimidade: 8, caixa: 30, xp: 20 }
-          },
-          falha: {
-            texto:
-              'Você começa pelo número e ninguém entende do que se trata. Na ' +
-              'terceira frase, o ventilador é a única coisa que ainda faz ' +
-              'barulho na sala.',
-            efeitos: { legitimidade: -4, xp: 10 }
-          },
-          desastre: {
-            texto:
-              'Você chama o bairro pelo nome errado. A correção vem da ' +
-              'terceira fila, em voz alta, e a reunião nunca mais volta para ' +
-              'você.',
-            efeitos: { legitimidade: -10, caixa: -20, xp: 10 }
-          }
-        }
-      },
-      {
-        id: 'ev1b',
-        nome: 'Passar a lista de ruas e dividir as tarefas por quarteirão',
-        atributo: 'articulacao',
-        cd: 12,
-        cena: 'lista',
-        resultados: {
-          critico: {
-            texto:
-              'Você não discursa: entrega quatro folhas e pede que cada um ' +
-              'escreva o próprio nome embaixo da rua onde mora. Ao fim da ' +
-              'noite o mapa do bairro está preenchido — e o seu telefone não ' +
-              'para mais.',
-            efeitos: { legitimidade: 8, caixa: 90, xp: 30 }
-          },
-          sucesso: {
-            texto:
-              'As folhas circulam, metade da sala assina e some antes do fim ' +
-              'da reunião. Serve.',
-            efeitos: { legitimidade: 5, caixa: 50, xp: 20 }
-          },
-          falha: {
-            texto:
-              'O papel circula e volta com seis nomes — quatro deles ' +
-              'repetidos. Você gastou a noite organizando uma lista que não ' +
-              'vai usar.',
-            efeitos: { caixa: -30, xp: 10 }
-          },
-          desastre: {
-            texto:
-              'Ninguém passa a lista adiante, e na saída você descobre que ' +
-              'duas folhas foram parar na mesa de outro candidato.',
-            efeitos: { caixa: -60, legitimidade: -5, xp: 10 }
-          }
-        }
-      }
-    ]
-  },
-
-  {
-    id: 'ev2',
-    fase: 'f2',
-    titulo: 'As últimas quarenta e oito horas',
-    descricaoImagem:
-      'Duas cenas lado a lado, numeradas 1 e 2. Na primeira, o candidato ' +
-      'aperta a mão de um feirante entre as barracas da feira, com o sol ' +
-      'ainda baixo. Na segunda, o candidato aponta para o mapa e para a ' +
-      'planilha da pesquisa abertos sobre a mesa da coordenação.',
-    mestre:
-      'Faltam dois dias. Sobraram quarenta e oito horas, um carro, quatro ' +
-      'cabos eleitorais e um caixa que não dá para tudo. A coordenação está ' +
-      'sentada na sua frente com dois mapas abertos, e alguém vai ter de ' +
-      'decidir agora onde esta campanha termina.',
-    abordagens: [
-      {
-        id: 'ev2a',
-        nome: 'Ir para a feira às cinco da manhã e fazer corpo a corpo até o meio-dia',
-        atributo: 'coragem',
-        cd: 13,
-        cena: 'feira',
-        resultados: {
-          critico: {
-            texto:
-              'Você aperta quatrocentas mãos antes do almoço. No dia ' +
-              'seguinte, três feirantes penduram o seu adesivo na barraca sem ' +
-              'que ninguém peça.',
-            efeitos: { legitimidade: 16, xp: 40 }
-          },
-          sucesso: {
-            texto:
-              'A feira rende menos do que a coordenação esperava, e rende o ' +
-              'que importava: gente que agora sabe o seu nome.',
-            efeitos: { legitimidade: 9, xp: 25 }
-          },
-          falha: {
-            texto:
-              'Chove às seis da manhã e a feira esvazia. Você fica duas horas ' +
-              'embaixo de uma lona, com o material na mão, sem entregar nada ' +
-              'a ninguém.',
-            efeitos: { legitimidade: -5, caixa: -40, xp: 12 }
-          },
-          desastre: {
-            texto:
-              'Você insiste no corpo a corpo, ignora os dois compromissos da ' +
-              'tarde e chega à véspera sem ter falado com ninguém que decide.',
-            efeitos: { legitimidade: -12, caixa: -80, xp: 12 }
-          }
-        }
-      },
-      {
-        id: 'ev2b',
-        nome: 'Cruzar os números da pesquisa interna e apostar nos dois bairros que decidem',
-        atributo: 'discernimento',
-        cd: 13,
-        cena: 'planilha',
-        resultados: {
-          critico: {
-            texto:
-              'Você lê a planilha por quarenta minutos e encontra o que ' +
-              'ninguém tinha visto: a diferença inteira está em duas seções, ' +
-              'e nas duas o adversário não pisou. A campanha vira para lá.',
-            efeitos: { legitimidade: 10, caixa: 120, xp: 40 }
-          },
-          sucesso: {
-            texto:
-              'A leitura se confirma e a coordenação aceita mudar o roteiro ' +
-              'do último dia. A aposta é pequena, mas é uma aposta sua.',
-            efeitos: { legitimidade: 6, caixa: 70, xp: 25 }
-          },
-          falha: {
-            texto:
-              'Os números estavam velhos de duas semanas, e a leitura leva a ' +
-              'campanha para o bairro errado no dia errado.',
-            efeitos: { caixa: -50, legitimidade: -4, xp: 12 }
-          },
-          desastre: {
-            texto:
-              'Você apresenta a leitura com convicção, a coordenação discorda ' +
-              'na sua frente e a reunião termina sem decisão nenhuma — nas ' +
-              'últimas quarenta e oito horas.',
-            efeitos: { caixa: -90, legitimidade: -8, xp: 12 }
-          }
-        }
-      }
-    ]
-  }
-];

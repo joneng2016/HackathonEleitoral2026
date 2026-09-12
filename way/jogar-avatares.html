@@ -127,18 +127,7 @@ window.addEventListener('unhandledrejection', function (ev) {
     if (JOGO.estado.tela !== 'origem') { log('  !! não saiu da tela do avatar'); log(''); return; }
 
     passo('escolherOrigem', function () { JOGO.escolherOrigem(window.ORIGENS[0].id); });
-    conferirTela(av.nome + ' · tela da ficha');
-
-    passo('comecar', function () { JOGO.comecar(); });
-
-    var ev = JOGO.estado.evento;
-    if (ev) {
-      passo('escolherAbordagem', function () { JOGO.escolherAbordagem(ev.evento.abordagens[0].id); });
-      passo('rolar', function () { JOGO.rolar(); });
-      passo('revelar', function () { JOGO.revelar(); });
-      conferirTela(av.nome + ' · evento ev1');
-      passo('aoDia', function () { JOGO.aoDia(); });
-    }
+    conferirTela(av.nome + ' · primeira circunstância');
 
     var quantas = JOGO.situacoesDaFase(0).length;
     for (var i = 0; i < quantas; i++) {
