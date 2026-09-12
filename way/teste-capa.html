@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><title>capa</title>
+<style>body{margin:0}iframe{border:0;display:block}</style></head>
+<body>
+<!-- =========================================================================
+     QUAIS TECLAS DISPENSAM A CAPA
+     -------------------------------------------------------------------------
+     A capa sai com qualquer tecla de entrada — e NÃO sai com as que não são
+     entrada de nada. Este teste chama as duas categorias pelo nome, dentro de
+     um iframe que carrega o jogo parado na capa.
+
+     Esperado: Shift e F5 deixam a capa na tela; "a" a dispensa e abre a
+     escolha de avatar; e a tecla seguinte não faz mais nada, porque a guarda
+     de reentrância já trocou a tela.
+
+     Carregar com --allow-file-access-from-files: sem isso o iframe de
+     file:// é origem opaca e a medição não enxerga o documento de dentro.
+     ====================================================================== -->
+<iframe id="q" src="teste-avatares.html?ate=0" style="width:900px;height:800px"></iframe>
+
+<script>
+(function () {
+  'use strict';
+  var q = document.getElementById('q');
+
+  q.addEventListener('load', function () {
+    setTimeout(function () {
+      var w = q.contentWindow, linha = [];
+
+      function tela() {
+        var d = w.document;
+        if (d.querySelector('#titulo-capa'))   return 'capa';
+        if (d.querySelector('#titulo-avatar')) return 'avatar';
+        return 'outra';
+      }
+      function tecla(k) {
+        w.document.dispatchEvent(new w.KeyboardEvent('keydown',
+          { key: k, bubbles: true, cancelable: true }));
+      }
+
+      linha.push('inicio=' + tela());
+      tecla('Shift');  linha.push('Shift=' + tela());
+      tecla('F5');     linha.push('F5=' + tela());
+      tecla('a');      linha.push('a=' + tela());
+      tecla('Escape'); linha.push('depois=' + tela());
+
+      document.title = linha.join(' · ');
+    }, 1000);
+  });
+})();
+</script>
+</body>
+</html>

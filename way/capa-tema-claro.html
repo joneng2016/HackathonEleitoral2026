@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#1f3b73">
 <title>Ilícitos em Jogo — o que você faz no dia da eleição</title>
 
-<link rel="stylesheet" href="css/estilo.css">
+<link rel="stylesheet" href="../css/estilo.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚖️</text></svg>">
 
 <!-- =========================================================================
@@ -20,7 +20,50 @@
      Não há dependência externa, etapa de build, cadastro ou instalação
      (RNF-02 / US-01). Abra o arquivo direto no navegador.
      ====================================================================== -->
-</head>
+<style>html:root {
+  --fundo:      #eef1f8;
+  --fundo-2:    #e3e8f4;
+  --superficie: #ffffff;
+  --superficie-2:#f7f9fd;
+  --texto:      #16203a;
+  --texto-suave:#5b6880;
+  --borda:      #dbe1ee;
+  --sombra:     0 1px 2px rgba(22,32,58,.06), 0 8px 24px rgba(22,32,58,.08);
+  --sombra-alta:0 2px 4px rgba(22,32,58,.08), 0 18px 42px rgba(22,32,58,.14);
+
+  --permitido:  #0f8f5e;
+  --permitido-bg:#e6f6ee;
+  --observar:   #b57206;
+  --observar-bg:#fdf2dd;
+  --crime:      #c62f2f;
+  --crime-bg:   #fdeaea;
+  --neutro:     #35507f;
+
+  --marca:      #1f3b73;
+  --marca-clara:#2f5aa8;
+
+  /* Fundos do selo de veredito. São mais escuros que as cores de acento dos
+     demais elementos porque carregam texto branco em corpo pequeno: o selo é
+     uma etiqueta de ~12,5px em caixa alta e precisa de 4,5:1, não de 3:1. */
+  --selo-permitido: #0a7350;
+  --selo-observar:  #8a5605;
+  --selo-crime:     #b02525;
+  --selo-texto:     #ffffff;
+
+  --raio:       16px;
+  --raio-p:     11px;
+  --toque:      52px;
+  --largura:    1080px;
+
+  /* Camada de RPG. A cor e deliberadamente distinta da marca (azul, que
+     governa o juridico) e das tres cores de veredito: a campanha nao deve
+     parecer, em momento algum, um quarto veredito. */
+  --rpg:        #6d4bb8;
+  --rpg-forte:  #553a94;
+  --rpg-bg:     #f1ecfb;
+  --rpg-borda:  #ddd2f4;
+  --rpg-texto:  #ffffff;
+}</style></head>
 <body>
 
 <header class="cabecalho">
@@ -43,9 +86,7 @@
 
   <!-- O índice de ilícitos: conta as condutas ilícitas da CANDIDATURA corrente
        — crimes e condutas vedadas — e é por ele, e só por ele, que a juíza
-       decide se o registro é deferido ou indeferido. A decisão é a maioria
-       dos atos: mais atos lícitos, deferido; mais atos ilícitos, indeferido.
-       A ficha do personagem não entra nessa conta. -->
+       decide se o registro é deferido ou impugnado. -->
   <div class="indice" id="indice" hidden></div>
 </header>
 
@@ -60,9 +101,9 @@
   </div>
 </noscript>
 
-<script src="dados/cenas.js"></script>
-<script src="js/ilustracoes.js"></script>
-<script src="js/ficha.js"></script>
-<script src="js/app.js"></script>
+<script src="../dados/cenas.js"></script>
+<script src="../js/ilustracoes.js"></script>
+<script src="../js/ficha.js"></script>
+<script src="../js/app.js"></script>
 </body>
 </html>

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<!-- =========================================================================
+     JOGAR COM TODOS OS AVATARES — meio de conferência, não parte do jogo
+     -------------------------------------------------------------------------
+     A bateria de way/ roda em Node, e por isso nunca passou pelo navegador:
+     um erro que só aparece com um avatar específico — o cadeirante, por
+     exemplo, cujo desenho troca as pernas por uma cadeira — escapava de
+     todas elas. Este arquivo é o que faltava: carrega o jogo num DOM de
+     verdade, joga uma carreira inteira com CADA avatar, e para no primeiro
+     erro de execução, em vez de segui-lo em silêncio até a tela.
+
+     O que ele procura, por avatar e por tela:
+       · exceção lançada (window.onerror, try/catch em cada passo);
+       · "undefined", "NaN" ou "[object Object]" impressos na tela;
+       · tela que saiu quase vazia;
+       · o avatar escolhido não chegando a `estado.avatar`.
+
+     Como rodar — o jogo é aberto direto no navegador, sem servidor, e este
+     arquivo também:
+       chrome --headless=new --virtual-time-budget=8000 --dump-dom \
+         "file:///<caminho>/way/jogar-avatares.html"
+     O resultado sai no <pre id="saida">. Sem o filtro, dá para abrir a
+     página no navegador e ler a lista inteira na própria tela.
+     ========================================================================= -->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Jogar com todos os avatares</title>
+<style>body{font:12px monospace;white-space:pre}</style>
+</head>
+<body>
+<div id="palco"></div>
+<div class="cabecalho" id="cabecalho"><span id="contador"></span></div>
+<div id="trilha"></div>
+<div id="ficha"></div>
+<div id="indice"></div>
+<pre id="saida">(rodando)</pre>
+
+<script>
+window.__erros = [];
+window.onerror = function (m, f, l, c, e) {
+  window.__erros.push('window.onerror: ' + m + ' @ ' + (f||'') + ':' + l + ':' + c);
+};
+window.addEventListener('error', function (ev) {
+  window.__erros.push('error event: ' + (ev.message || ev.type) +
+    (ev.error && ev.error.stack ? ' | ' + ev.error.stack.split('\n')[0] : ''));
+});
+window.addEventListener('unhandledrejection', function (ev) {
+  window.__erros.push('unhandledrejection: ' + ev.reason);
+});
+</script>
+
+<script src="../dados/cenas.js"></script>
+<script src="../js/ilustracoes.js"></script>
+<script src="../js/ficha.js"></script>
+<script src="../js/app.js"></script>
+
+<script>
+(function () {
+  var linhas = [];
+  function log(s) { linhas.push(s); }
+
+  function tela() { return document.getElementById('palco').innerHTML; }
+
+  function conferirTela(onde) {
+    var html = tela();
+    ['undefined', 'NaN', '[object Object]'].forEach(function (ruim) {
+      if (html.indexOf(ruim) !== -1) {
+        log('  !! ' + onde + ': a tela mostra "' + ruim + '"');
+        var i = html.indexOf(ruim);
+        log('     ...' + html.slice(Math.max(0, i - 120), i + 60).replace(/\s+/g, ' ') + '...');
+      }
+    });
+    if (html.length < 400) log('  !! ' + onde + ': tela quase vazia (' + html.length + ' bytes)');
+    return html;
+  }
+
+  function passo(nome, fn) {
+    var antes = window.__erros.length;
+    try {
+      var r = fn();
+      if (window.__erros.length > antes) {
+        log('  !! ' + nome + ': ' + window.__erros.slice(antes).join(' | '));
+        return null;
+      }
+      return r;
+    } catch (e) {
+      log('  !! ' + nome + ': EXCEÇÃO -> ' + (e && e.message ? e.message : e));
+      log('     ' + (e && e.stack ? e.stack.split('\n').slice(0, 3).join(' <- ') : ''));
+      return null;
+    }
+  }
+
+  var JOGO = window.JOGO;
+  if (!JOGO) { document.getElementById('saida').textContent = 'JOGO ausente'; return; }
+
+  log('AVATARES: ' + window.AVATARES.map(function (a) {
+    return a.id + '/' + a.nome + (a.cadeirante ? ' [cadeirante]' : '');
+  }).join(', '));
+  log('ORIGENS: ' + window.ORIGENS.map(function (o) { return o.id; }).join(', '));
+  log('');
+
+  window.AVATARES.forEach(function (av) {
+    log('=== ' + av.nome + ' (' + av.id + ') ===');
+    window.__erros.length = 0;
+
+    /* 1. o retrato na grade de seleção */
+    var cartao = null;
+    passo('retratoDoAvatar', function () {
+      cartao = window.retratoDoAvatar(av);
+      if (!cartao || cartao.length < 400) log('  !! retrato curto: ' + (cartao ? cartao.length : cartao));
+      if (cartao && cartao.indexOf('undefined') !== -1) log('  !! retrato com undefined');
+      return cartao;
+    });
+
+    /* 2. a carreira inteira, até a juíza, com este avatar */
+    passo('iniciar', function () { JOGO.iniciar(); });
+    passo('abrirCriacao', function () { JOGO.abrirCriacao(); });
+    conferirTela(av.nome + ' · tela do avatar');
+
+    var ok = passo('escolherAvatar', function () { JOGO.escolherAvatar(av.id); return true; });
+    if (ok === null) { log(''); return; }
+    log('  estado.tela depois do clique: ' + JOGO.estado.tela);
+    log('  estado.avatar: ' + (JOGO.estado.avatar ? JOGO.estado.avatar.nome : null));
+    conferirTela(av.nome + ' · tela de origem');
+
+    if (JOGO.estado.tela !== 'origem') { log('  !! não saiu da tela do avatar'); log(''); return; }
+
+    passo('escolherOrigem', function () { JOGO.escolherOrigem(window.ORIGENS[0].id); });
+    conferirTela(av.nome + ' · tela da ficha');
+
+    passo('comecar', function () { JOGO.comecar(); });
+
+    var ev = JOGO.estado.evento;
+    if (ev) {
+      passo('escolherAbordagem', function () { JOGO.escolherAbordagem(ev.evento.abordagens[0].id); });
+      passo('rolar', function () { JOGO.rolar(); });
+      passo('revelar', function () { JOGO.revelar(); });
+      conferirTela(av.nome + ' · evento ev1');
+      passo('aoDia', function () { JOGO.aoDia(); });
+    }
+
+    var quantas = JOGO.situacoesDaFase(0).length;
+    for (var i = 0; i < quantas; i++) {
+      var cena = JOGO.cenaAtual();
+      if (!cena) { log('  !! cena ' + (i + 1) + ' ausente'); break; }
+      log('  cena ' + cena.id + ' / ilustração ' + cena.ilustracao);
+      passo('cena ' + (i + 1) + ' · render', function () { return conferirTela(av.nome + ' · cena ' + cena.id); });
+      var op = cena.opcoes[0];
+      passo('decidir ' + cena.id, function () { JOGO.decidir(op.id); });
+      passo('avancar ' + cena.id, function () { JOGO.avancar(); });
+    }
+    conferirTela(av.nome + ' · juíza');
+
+    /* 3. até o fim da fase 1, atravessando o julgamento */
+    passo('aposJulgamento', function () { JOGO.aposJulgamento(); });
+    conferirTela(av.nome + ' · pós-julgamento');
+    passo('seguir', function () { JOGO.seguir(); });
+    conferirTela(av.nome + ' · seguindo');
+    passo('proximaFase', function () { JOGO.proximaFase(); });
+    conferirTela(av.nome + ' · fase 2');
+
+    var ev2 = JOGO.estado.evento;
+    if (ev2) {
+      passo('ev2 · escolherAbordagem', function () { JOGO.escolherAbordagem(ev2.evento.abordagens[0].id); });
+      passo('ev2 · rolar', function () { JOGO.rolar(); });
+      passo('ev2 · revelar', function () { JOGO.revelar(); });
+      conferirTela(av.nome + ' · evento ev2');
+      passo('ev2 · aoDia', function () { JOGO.aoDia(); });
+    }
+
+    var quantas2 = JOGO.situacoesDaFase(1).length;
+    for (var j = 0; j < quantas2; j++) {
+      var c2 = JOGO.cenaAtual();
+      if (!c2) { log('  !! cena fase2 ' + (j + 1) + ' ausente'); break; }
+      passo('fase2 · cena ' + c2.id, function () { return conferirTela(av.nome + ' · fase2 cena ' + c2.id); });
+      var op2 = c2.opcoes[0];
+      passo('fase2 · decidir ' + c2.id, function () { JOGO.decidir(op2.id); });
+      passo('fase2 · avancar ' + c2.id, function () { JOGO.avancar(); });
+    }
+    conferirTela(av.nome + ' · juíza fase 2');
+    passo('fase2 · aposJulgamento', function () { JOGO.aposJulgamento(); });
+    conferirTela(av.nome + ' · fim');
+
+    log('  erros acumulados: ' + (window.__erros.length || 'nenhum'));
+    log('');
+  });
+
+  /* O evento de cada fase, desenhado para cada avatar — é onde o cadeirante
+     ganha um desenho próprio. */
+  log('=== ilustracaoDoEvento por avatar ===');
+  (window.EVENTOS || []).forEach(function (ev) {
+    window.AVATARES.forEach(function (av) {
+      passo('evento ' + ev.id + ' · ' + av.nome, function () {
+        var s = window.ilustracaoDoEvento(ev, av, null);
+        if (!s || s.length < 400) log('  !! ' + ev.id + '/' + av.nome + ': curto (' + (s ? s.length : s) + ')');
+        if (s && s.indexOf('undefined') !== -1) log('  !! ' + ev.id + '/' + av.nome + ': undefined no desenho');
+        if (s && s.indexOf('NaN') !== -1) log('  !! ' + ev.id + '/' + av.nome + ': NaN no desenho');
+      });
+    });
+  });
+
+  document.getElementById('saida').textContent = linhas.join('\n');
+})();
+</script>
+</body>
+</html>
