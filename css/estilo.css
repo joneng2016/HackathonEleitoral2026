@@ -38,6 +38,15 @@
   --raio-p:     11px;
   --toque:      52px;
   --largura:    1080px;
+
+  /* Camada de RPG. A cor e deliberadamente distinta da marca (azul, que
+     governa o juridico) e das tres cores de veredito: a campanha nao deve
+     parecer, em momento algum, um quarto veredito. */
+  --rpg:        #6d4bb8;
+  --rpg-forte:  #553a94;
+  --rpg-bg:     #f1ecfb;
+  --rpg-borda:  #ddd2f4;
+  --rpg-texto:  #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -68,11 +77,24 @@
     --selo-observar:  var(--observar);
     --selo-crime:     var(--crime);
     --selo-texto:     #0d1424;
+
+    --rpg:        #b39cf2;
+    --rpg-forte:  #c9b8f7;
+    --rpg-bg:     #211a38;
+    --rpg-borda:  #3a2f5c;
+    --rpg-texto:  #16102a;
   }
 }
 
 /* ------------------------------------------------------------------ BASE */
 *, *::before, *::after { box-sizing: border-box; }
+
+/* O atributo `hidden` do HTML vale display:none apenas pela folha do
+   navegador. Qualquer regra de autor com `display` — .trilha{display:flex},
+   .indice{display:flex} — vence essa folha e o elemento "escondido" continua
+   na tela. Sem esta linha, a trilha de progresso e o índice de ilícitos
+   aparecem durante a escolha do avatar. */
+[hidden] { display: none !important; }
 
 /* scroll-behavior em CSS em vez de window.scrollTo({behavior}): a forma com
    objeto de opções é ignorada, sem erro, em Safari anterior ao 15.4 e em
@@ -770,4 +792,992 @@ p[tabindex="-1"]:focus-visible {
   .acoes-finais .botao { flex: 1 1 100%; }
   .avatar__tecla { display: none; }
   .abertura { padding-top: 24px; }
+}
+/* =============================================================================
+ * O ÍNDICE, AS CONDUTAS E A JUÍZA
+ * -----------------------------------------------------------------------------
+ * Tudo o que segue pertence ao núcleo do jogo. O índice usa as três cores de
+ * veredito porque ele É um veredito em construção: limpo, em advertência, ou
+ * já impugnado. A juíza usa o azul da marca, porque quem fala ali é a lei.
+ * ========================================================================== */
+
+/* ---- O índice de ilícitos -------------------------------------------- */
+.indice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding: 11px 16px;
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-left: 4px solid var(--permitido);
+  border-radius: var(--raio-p);
+  box-shadow: var(--sombra);
+  transition: border-color .3s ease;
+}
+.indice[data-estado="advertencia"] { border-left-color: var(--observar); }
+.indice[data-estado="impugnacao"]  { border-left-color: var(--crime); }
+
+.indice__rotulo {
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+  flex: 0 0 auto;
+}
+
+.indice__barra {
+  display: block;
+  flex: 1 1 140px;
+  min-width: 90px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--borda);
+  overflow: hidden;
+}
+.indice__barra i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--permitido);
+  transition: width .45s cubic-bezier(.22,.8,.3,1), background .3s ease;
+}
+.indice[data-estado="advertencia"] .indice__barra i { background: var(--observar); }
+.indice[data-estado="impugnacao"]  .indice__barra i { background: var(--crime); }
+
+/* As marcas mostram quantos ilícitos cabem antes da impugnação: uma casa a
+   mais do que a tolerância, porque é essa a que derruba a candidatura. */
+.indice__marcas { display: flex; gap: 4px; flex: 0 0 auto; }
+.indice__marca {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: var(--borda);
+  transition: background .3s ease;
+}
+.indice[data-estado="advertencia"] .indice__marca--cheia { background: var(--observar); }
+.indice[data-estado="impugnacao"]  .indice__marca--cheia { background: var(--crime); }
+
+.indice__valor {
+  font-size: 1.25rem;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+.indice[data-estado="advertencia"] .indice__valor { color: var(--observar); }
+.indice[data-estado="impugnacao"]  .indice__valor { color: var(--crime); }
+
+.indice__frase {
+  font-size: .8rem;
+  color: var(--texto-suave);
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+/* ---- As quatro condutas ---------------------------------------------- */
+.condutas { display: grid; gap: 10px; }
+
+.conduta {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  width: 100%;
+  min-height: var(--toque);
+  padding: 14px 16px;
+  text-align: left;
+  background: var(--superficie);
+  border: 2px solid var(--borda);
+  border-radius: var(--raio-p);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1.5;
+  transition: border-color .16s, background .16s, transform .16s, box-shadow .16s;
+  box-shadow: 0 1px 2px rgba(22,32,58,.05);
+}
+.conduta:hover {
+  transform: translateY(-2px);
+  border-color: var(--marca-clara);
+  background: var(--superficie-2);
+  box-shadow: var(--sombra);
+}
+.conduta:active { transform: translateY(0); }
+
+.conduta__tecla {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 30px; height: 30px;
+  border-radius: 9px;
+  background: var(--superficie-2);
+  border: 1px solid var(--borda);
+  font-size: .82rem;
+  font-weight: 800;
+  color: var(--texto-suave);
+  transition: background .16s, color .16s;
+}
+.conduta:hover .conduta__tecla {
+  background: var(--marca-clara);
+  border-color: var(--marca-clara);
+  color: #fff;
+}
+@media (prefers-color-scheme: dark) {
+  .conduta:hover .conduta__tecla { color: #0d1424; }
+}
+
+.conduta__texto { flex: 1 1 auto; min-width: 0; font-weight: 600; }
+
+/* ---- Retorno: o que eram as quatro condutas -------------------------- */
+.painel-condutas {
+  background: var(--superficie-2);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-p);
+  padding: 16px 18px;
+  margin-bottom: 22px;
+}
+.painel-condutas__titulo {
+  font-size: .78rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+  margin-bottom: 11px;
+}
+
+.conduta-rev-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+
+.conduta-rev {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-left: 4px solid var(--borda);
+}
+.conduta-rev[data-natureza="conforme"] { border-left-color: var(--permitido); }
+.conduta-rev[data-natureza="crime"]    { border-left-color: var(--crime); }
+.conduta-rev[data-natureza="vedacao"]  { border-left-color: var(--observar); }
+.conduta-rev--escolhida { box-shadow: 0 0 0 2px var(--marca-clara) inset; }
+
+.conduta-rev__marca { flex: 0 0 auto; font-size: .95rem; line-height: 1.45; }
+.conduta-rev[data-natureza="conforme"] .conduta-rev__marca { color: var(--permitido); }
+.conduta-rev[data-natureza="crime"]    .conduta-rev__marca { color: var(--crime); }
+.conduta-rev[data-natureza="vedacao"]  .conduta-rev__marca { color: var(--observar); }
+
+.conduta-rev__texto { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+.conduta-rev__frase { font-size: .9rem; font-weight: 600; }
+.conduta-rev__rotulo {
+  font-size: .74rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+}
+.conduta-rev--escolhida .conduta-rev__rotulo { color: var(--marca-clara); }
+
+/* O bloco de equívoco muda de cor conforme a natureza: crime em vermelho,
+   conduta vedada em âmbar. Pintar a vedação de vermelho ensinaria que toda
+   irregularidade eleitoral é crime. */
+.bloco-erro[data-natureza="vedacao"] {
+  border-left-color: var(--observar);
+  background: var(--observar-bg);
+}
+.bloco-erro[data-natureza="vedacao"] h3 { color: var(--observar); }
+
+/* ---- A juíza ---------------------------------------------------------- */
+.juiza {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 26px;
+  align-items: start;
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-top: 5px solid var(--marca);
+  border-radius: var(--raio);
+  box-shadow: var(--sombra-alta);
+  padding: 24px;
+  margin-bottom: 22px;
+}
+
+.juiza__figura {
+  margin: 0;
+  border-radius: var(--raio-p);
+  overflow: hidden;
+  background: var(--superficie-2);
+  border: 1px solid var(--borda);
+}
+.juiza__figura svg { display: block; width: 100%; height: auto; }
+
+.juiza__corpo { min-width: 0; }
+
+.juiza__titulo {
+  font-size: clamp(1.2rem, 3vw, 1.5rem);
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+.juiza__apresentacao {
+  font-size: .96rem;
+  color: var(--texto-suave);
+  margin-bottom: 18px;
+}
+
+.juiza__fala { display: grid; gap: 13px; margin-bottom: 20px; }
+.juiza__fala .retorno__justificativa { font-size: 1rem; }
+
+.juiza__veredito {
+  border-radius: var(--raio-p);
+  padding: 16px 18px;
+  margin-bottom: 20px;
+  border: 2px solid var(--permitido);
+  background: var(--permitido-bg);
+}
+.juiza__veredito[data-veredito="impugnada"] {
+  border-color: var(--crime);
+  background: var(--crime-bg);
+}
+.juiza__veredito-rotulo {
+  font-size: .74rem;
+  font-weight: 800;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+  color: var(--permitido);
+  margin-bottom: 4px;
+}
+.juiza__veredito[data-veredito="impugnada"] .juiza__veredito-rotulo { color: var(--crime); }
+.juiza__veredito-titulo { font-size: 1.1rem; font-weight: 800; }
+
+.juiza__ilicito { margin-bottom: 20px; }
+.juiza__ilicito h3 {
+  font-size: .78rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+  margin-bottom: 10px;
+}
+.ilicito-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.ilicito-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 13px;
+  border-radius: 9px;
+  background: var(--superficie-2);
+  border: 1px solid var(--borda);
+  border-left: 4px solid var(--crime);
+}
+.ilicito-item[data-natureza="vedacao"] { border-left-color: var(--observar); }
+.ilicito-item b { font-size: .9rem; }
+.ilicito-item span { font-size: .86rem; color: var(--texto-suave); }
+
+.juiza__contagem {
+  margin-top: 10px;
+  font-size: .86rem;
+  font-weight: 700;
+  color: var(--texto-suave);
+  font-variant-numeric: tabular-nums;
+}
+.juiza__limpo {
+  font-size: .96rem;
+  font-weight: 700;
+  color: var(--permitido);
+  margin-bottom: 20px;
+}
+
+/* ---- A apuração ------------------------------------------------------- */
+.apuracao {
+  border-radius: var(--raio-p);
+  padding: 20px;
+  margin-bottom: 16px;
+  border: 2px solid var(--marca-clara);
+  background: var(--superficie-2);
+  text-align: center;
+}
+.apuracao[data-resultado="vitoria"] { border-color: var(--permitido); background: var(--permitido-bg); }
+.apuracao__rotulo {
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+  margin-bottom: 8px;
+}
+.apuracao__resultado {
+  font-size: clamp(1.6rem, 5vw, 2.2rem);
+  font-weight: 850;
+  letter-spacing: -.02em;
+  margin-bottom: 6px;
+}
+.apuracao__titulo { font-size: 1.1rem; font-weight: 800; margin-bottom: 8px; }
+.apuracao__texto { font-size: .96rem; color: var(--texto-suave); }
+
+/* ---- Nota de honestidade intelectual ---------------------------------- */
+.nota-jogo {
+  font-size: .82rem;
+  line-height: 1.6;
+  color: var(--texto-suave);
+  font-style: italic;
+  border-left: 3px solid var(--borda);
+  padding-left: 13px;
+  margin-bottom: 20px;
+}
+
+/* ---- A tese, no encerramento ------------------------------------------ */
+.painel--tese { border-left: 4px solid var(--marca-clara); }
+.painel--tese .painel__sub:last-child { margin-bottom: 0; }
+
+/* ---- Responsivo -------------------------------------------------------- */
+@media (max-width: 900px) {
+  .juiza { grid-template-columns: 1fr; gap: 20px; }
+}
+
+@media (max-width: 560px) {
+  .indice { gap: 9px; padding: 10px 13px; }
+  .indice__frase { flex: 1 1 100%; }
+  .juiza { padding: 18px; }
+  .conduta { padding: 12px 13px; gap: 11px; }
+  .conduta__tecla { width: 26px; height: 26px; font-size: .76rem; }
+  .painel-condutas { padding: 13px 14px; }
+}
+
+/* =============================================================================
+ * CAMADA DE RPG
+ * -----------------------------------------------------------------------------
+ * Tudo o que segue pertence à campanha, não ao julgamento. A separação visual
+ * é intencional: o que é jurídico usa o azul da marca; o que é campanha usa o
+ * violeta de --rpg. Um jogador deve conseguir dizer, de relance, o que é
+ * regra de direito e o que é estado do personagem.
+ * ========================================================================== */
+
+
+/* ---- Barras ---------------------------------------------------------- */
+.barra {
+  display: block;
+  position: relative;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--borda);
+  overflow: hidden;
+}
+.barra i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--rpg);
+  transition: width .5s cubic-bezier(.22,.8,.3,1);
+}
+.barra--xp i { background: var(--marca-clara); }
+
+/* A legitimidade é o único recurso que muda de cor: ela é o termômetro da
+   campanha, e um número baixo precisa ser legível como problema. */
+.rec[data-nivel="alto"] .barra i { background: var(--permitido); }
+.rec[data-nivel="medio"] .barra i { background: var(--observar); }
+.rec[data-nivel="baixo"] .barra i { background: var(--crime); }
+
+/* ---- Atributos -------------------------------------------------------- */
+.atr {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px 4px 7px;
+  border-radius: 999px;
+  background: var(--superficie-2);
+  border: 1px solid var(--borda);
+  font-size: .78rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.atr__icone { color: var(--rpg); font-size: .92rem; line-height: 1; }
+.atr__texto { display: flex; flex-direction: column; min-width: 0; }
+.atr__nome { font-size: .78rem; }
+.atr__resumo { font-size: .8rem; font-weight: 500; color: var(--texto-suave); white-space: normal; }
+.atr__valor {
+  font-variant-numeric: tabular-nums;
+  background: var(--rpg);
+  color: var(--rpg-texto);
+  border-radius: 999px;
+  min-width: 21px;
+  text-align: center;
+  padding: 1px 6px;
+  font-size: .78rem;
+}
+.atr--longo {
+  display: flex;
+  gap: 11px;
+  padding: 12px 14px;
+  border-radius: var(--raio-p);
+  white-space: normal;
+  align-items: flex-start;
+}
+.atr--longo .atr__icone { font-size: 1.05rem; margin-top: 1px; }
+.atr--longo .atr__texto { flex: 1 1 auto; gap: 3px; }
+.atr--longo .atr__nome { font-weight: 750; font-size: .95rem; color: var(--texto); }
+.atr--longo .atr__valor { align-self: center; font-size: .95rem; padding: 4px 11px; }
+
+/* ---- Recursos --------------------------------------------------------- */
+.rec {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .78rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.rec--largo { flex: 1 1 170px; min-width: 0; }
+.rec--largo .barra { flex: 1 1 auto; min-width: 54px; }
+.rec__nome { color: var(--texto-suave); }
+.rec__valor { font-variant-numeric: tabular-nums; }
+.rec[data-alerta="sim"] .rec__valor { color: var(--crime); }
+
+/* ---- Resumo que acompanha a partida (cabeçalho) ----------------------- */
+.ficha {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1.15fr) minmax(0, 1.05fr) minmax(0, 1.5fr) minmax(0, 1.35fr);
+  gap: 12px 20px;
+  align-items: center;
+  margin-top: 14px;
+  padding: 12px 16px;
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-left: 4px solid var(--rpg);
+  border-radius: var(--raio-p);
+  box-shadow: var(--sombra);
+}
+
+.ficha__ident { display: flex; align-items: center; gap: 11px; min-width: 0; }
+
+.ficha__retrato {
+  flex: 0 0 auto;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  line-height: 0;
+  border: 2px solid var(--rpg-borda);
+}
+.ficha__retrato svg { display: block; width: 100%; height: auto; }
+
+.ficha__quem { display: flex; flex-direction: column; min-width: 0; }
+.ficha__nome { font-weight: 800; font-size: .95rem; }
+.ficha__origem,
+.ficha__cargo {
+  font-size: .74rem;
+  color: var(--texto-suave);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ficha__cargo { color: var(--rpg); font-weight: 700; }
+
+.ficha__nivel { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ficha__nivel-linha { font-size: .8rem; color: var(--texto-suave); }
+.ficha__nivel-linha b { color: var(--texto); }
+.ficha__xp-num {
+  font-size: .72rem;
+  color: var(--texto-suave);
+  font-variant-numeric: tabular-nums;
+}
+
+.ficha__atributos {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.ficha__recursos { display: flex; flex-wrap: wrap; gap: 8px 16px; min-width: 0; }
+
+/* ---- Criação: passos, origens ----------------------------------------- */
+.passo {
+  font-size: .74rem;
+  font-weight: 800;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--rpg);
+  margin-bottom: 8px;
+}
+.passo--centro { text-align: center; }
+
+.origens {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.origem {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  text-align: left;
+  padding: 16px 17px;
+  min-height: var(--toque);
+  background: var(--superficie-2);
+  border: 2px solid var(--borda);
+  border-radius: var(--raio-p);
+  cursor: pointer;
+  transition: border-color .16s, background .16s, transform .16s, box-shadow .16s;
+}
+.origem:hover {
+  transform: translateY(-3px);
+  border-color: var(--rpg);
+  background: var(--rpg-bg);
+  box-shadow: var(--sombra);
+}
+
+.origem__topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.origem__nome { font-weight: 800; font-size: 1rem; }
+.origem__desc { font-size: .88rem; color: var(--texto-suave); }
+.origem__lema {
+  font-size: .84rem;
+  font-style: italic;
+  color: var(--rpg);
+  border-left: 3px solid var(--rpg-borda);
+  padding-left: 10px;
+}
+
+.origem__atributos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin-top: auto;
+  padding-top: 4px;
+}
+.origem__atr {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: .74rem;
+  font-weight: 700;
+  color: var(--texto-suave);
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.origem__atr-valor { color: var(--rpg); font-variant-numeric: tabular-nums; }
+.origem__caixa {
+  margin-left: auto;
+  font-size: .78rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--texto);
+}
+
+.origem__tecla,
+.abordagem__tecla {
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--texto-suave);
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  padding: 1px 7px;
+  background: var(--superficie);
+  flex: 0 0 auto;
+}
+
+/* ---- Ficha completa --------------------------------------------------- */
+.ficha-cheia {
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-left: 5px solid var(--rpg);
+  border-radius: var(--raio);
+  box-shadow: var(--sombra);
+  padding: 24px 26px;
+  margin-bottom: 22px;
+}
+
+.ficha-cheia__topo {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.ficha-cheia__retrato {
+  flex: 0 0 auto;
+  width: 92px; height: 92px;
+  border-radius: 50%;
+  overflow: hidden;
+  line-height: 0;
+  border: 3px solid var(--rpg-borda);
+}
+.ficha-cheia__retrato svg { display: block; width: 100%; height: auto; }
+
+.ficha-cheia__quem { flex: 1 1 190px; min-width: 0; }
+.ficha-cheia__nome { font-size: 1.3rem; font-weight: 850; margin-bottom: 2px; }
+.ficha-cheia__origem { font-size: .92rem; font-weight: 700; color: var(--rpg); }
+.ficha-cheia__lema {
+  font-size: .88rem;
+  font-style: italic;
+  color: var(--texto-suave);
+  margin-top: 7px;
+}
+
+.ficha-cheia__nivel {
+  flex: 1 1 210px;
+  min-width: 0;
+  background: var(--rpg-bg);
+  border: 1px solid var(--rpg-borda);
+  border-radius: var(--raio-p);
+  padding: 14px 16px;
+}
+.ficha-cheia__nivel-num {
+  font-size: .74rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--rpg);
+}
+.ficha-cheia__nivel-titulo { font-size: 1.05rem; font-weight: 800; margin-bottom: 9px; }
+.ficha-cheia__xp {
+  font-size: .78rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--texto-suave);
+  margin-top: 6px;
+}
+.ficha-cheia__nota { font-size: .82rem; font-style: italic; color: var(--texto-suave); margin-top: 6px; }
+
+.ficha-cheia__recursos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 26px;
+  padding: 15px 0;
+  border-top: 1px solid var(--borda);
+  border-bottom: 1px solid var(--borda);
+  margin-bottom: 18px;
+}
+
+.ficha-cheia__atributos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+/* ---- Inventário do dia ------------------------------------------------ */
+.inventario {
+  background: var(--rpg-bg);
+  border: 1px solid var(--rpg-borda);
+  border-radius: var(--raio-p);
+  padding: 13px 15px;
+  margin-bottom: 20px;
+}
+.inventario__titulo {
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--rpg);
+  margin-bottom: 9px;
+}
+.inventario__lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 8px;
+}
+.item {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: 9px;
+  padding: 8px 10px;
+}
+.item__icone {
+  flex: 0 0 auto;
+  color: var(--rpg);
+  font-size: 1rem;
+  line-height: 1.35;
+}
+.item__texto { display: flex; flex-direction: column; min-width: 0; }
+.item__nome { font-size: .85rem; font-weight: 700; }
+.item__nota { font-size: .76rem; color: var(--texto-suave); }
+
+/* ---- Evento de campanha ----------------------------------------------- */
+.evento {
+  max-width: 780px;
+  margin: 0 auto;
+  background: var(--superficie);
+  border: 1px solid var(--borda);
+  border-top: 5px solid var(--rpg);
+  border-radius: var(--raio);
+  box-shadow: var(--sombra-alta);
+  padding: 26px 28px 28px;
+}
+
+.mestre {
+  background: var(--rpg-bg);
+  border-left: 4px solid var(--rpg);
+  border-radius: 0 var(--raio-p) var(--raio-p) 0;
+  padding: 14px 17px;
+  margin: 16px 0 20px;
+}
+.mestre__rotulo {
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--rpg);
+  margin-bottom: 6px;
+}
+.mestre__texto { font-size: .98rem; font-style: italic; }
+
+.evento__pergunta {
+  font-weight: 700;
+  font-size: .95rem;
+  margin: 22px 0 12px;
+}
+.evento__rolando {
+  text-align: center;
+  font-weight: 700;
+  color: var(--texto-suave);
+  margin: 24px 0 14px;
+}
+
+.abordagens { display: grid; gap: 10px; }
+
+.abordagem {
+  display: grid;
+  gap: 8px;
+  text-align: left;
+  width: 100%;
+  min-height: var(--toque);
+  padding: 14px 17px;
+  background: var(--superficie-2);
+  border: 2px solid var(--borda);
+  border-radius: var(--raio-p);
+  cursor: pointer;
+  transition: border-color .16s, background .16s, transform .16s, box-shadow .16s;
+}
+.abordagem:hover {
+  transform: translateY(-2px);
+  border-color: var(--rpg);
+  background: var(--rpg-bg);
+  box-shadow: var(--sombra);
+}
+.abordagem__topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.abordagem__atributo {
+  font-size: .76rem;
+  font-weight: 800;
+  color: var(--rpg);
+  letter-spacing: .04em;
+}
+.abordagem__cd {
+  font-size: .74rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--texto-suave);
+  border: 1px solid var(--borda);
+  border-radius: 999px;
+  padding: 2px 9px;
+  background: var(--superficie);
+}
+.abordagem__nome { font-size: 1rem; font-weight: 700; }
+.abordagem__tecla { justify-self: end; }
+
+.declaracao {
+  background: var(--superficie-2);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-p);
+  padding: 16px 18px;
+  margin-top: 18px;
+}
+.declaracao__rotulo {
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--rpg);
+  margin-bottom: 6px;
+}
+.declaracao__nome { font-size: 1.02rem; font-weight: 750; margin-bottom: 8px; }
+.declaracao__conta { font-size: .88rem; color: var(--texto-suave); }
+
+.botao--dado { margin-top: 18px; }
+
+/* ---- O dado ----------------------------------------------------------- */
+.dado-palco { display: flex; justify-content: center; margin: 20px 0 12px; }
+
+.dado {
+  width: 120px;
+  height: 120px;
+  display: block;
+  animation: tomba .6s cubic-bezier(.22,.8,.3,1) both;
+}
+@keyframes tomba {
+  0%   { transform: rotate(-140deg) scale(.68); opacity: 0; }
+  60%  { transform: rotate(14deg) scale(1.07);  opacity: 1; }
+  100% { transform: rotate(0deg) scale(1); }
+}
+.dado[data-estado="rolando"] { animation: gira .9s linear infinite; }
+@keyframes gira {
+  0%   { transform: rotate(0deg)   scale(.92); }
+  50%  { transform: rotate(180deg) scale(1.04); }
+  100% { transform: rotate(360deg) scale(.92); }
+}
+
+.dado__face  { fill: var(--superficie-2); stroke: var(--borda); stroke-width: 2.5; }
+.dado__linha { fill: none; stroke: var(--borda); stroke-width: 2.5; stroke-linejoin: round; }
+.dado__numero {
+  font-family: 'Segoe UI', system-ui, -apple-system, Helvetica, Arial, sans-serif;
+  font-size: 36px;
+  font-weight: 850;
+  fill: var(--texto);
+}
+
+.dado[data-estado="critico"]  .dado__face,
+.dado[data-estado="sucesso"]  .dado__face  { fill: var(--permitido-bg); stroke: var(--permitido); }
+.dado[data-estado="critico"]  .dado__linha,
+.dado[data-estado="sucesso"]  .dado__linha { stroke: var(--permitido); }
+.dado[data-estado="critico"]  .dado__numero,
+.dado[data-estado="sucesso"]  .dado__numero { fill: var(--permitido); }
+
+.dado[data-estado="falha"]    .dado__face  { fill: var(--observar-bg); stroke: var(--observar); }
+.dado[data-estado="falha"]    .dado__linha { stroke: var(--observar); }
+.dado[data-estado="falha"]    .dado__numero { fill: var(--observar); }
+
+.dado[data-estado="desastre"] .dado__face  { fill: var(--crime-bg); stroke: var(--crime); }
+.dado[data-estado="desastre"] .dado__linha { stroke: var(--crime); }
+.dado[data-estado="desastre"] .dado__numero { fill: var(--crime); }
+
+.rolagem__conta {
+  text-align: center;
+  font-size: .95rem;
+  color: var(--texto-suave);
+  margin-bottom: 6px;
+}
+.rolagem__conta b { color: var(--texto); }
+.rolagem__faixa {
+  text-align: center;
+  font-size: .78rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.rolagem__faixa[data-faixa="critico"],
+.rolagem__faixa[data-faixa="sucesso"] { color: var(--permitido); }
+.rolagem__faixa[data-faixa="falha"]   { color: var(--observar); }
+.rolagem__faixa[data-faixa="desastre"]{ color: var(--crime); }
+
+.rolagem__texto {
+  font-size: 1.02rem;
+  margin-bottom: 16px;
+}
+.rolagem__texto + .efeitos { margin-bottom: 20px; }
+
+/* ---- Efeitos aplicados ------------------------------------------------ */
+.efeitos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.efeito {
+  display: inline-flex;
+  align-items: center;
+  font-size: .8rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  border-radius: 999px;
+  padding: 4px 12px;
+  background: var(--superficie-2);
+  border: 1px solid var(--borda);
+}
+.efeito--xp    { color: var(--marca-clara); border-color: var(--marca-clara); }
+.efeito--leg   { color: var(--permitido);   border-color: var(--permitido); }
+.efeito--caixa { color: var(--observar);    border-color: var(--observar); }
+
+/* Recurso bom perdido não é notícia boa: o sinal manda na cor. */
+.efeito[data-sinal="menos"] { color: var(--crime); border-color: var(--crime); }
+
+/* ---- Consequência na campanha (tela de retorno) ----------------------- */
+.consequencia {
+  border-left: 4px solid var(--rpg);
+  background: var(--rpg-bg);
+  border-radius: 0 var(--raio-p) var(--raio-p) 0;
+  padding: 15px 18px;
+  margin-bottom: 20px;
+}
+.consequencia[data-tom="errado"] { border-left-color: var(--crime); }
+.consequencia__rotulo {
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--rpg);
+  margin-bottom: 6px;
+}
+.consequencia[data-tom="errado"] .consequencia__rotulo { color: var(--crime); }
+.consequencia__texto { font-size: .98rem; margin-bottom: 12px; }
+.consequencia__nivel {
+  font-size: .86rem;
+  font-weight: 800;
+  color: var(--rpg);
+  margin-top: 10px;
+}
+.consequencia__representacao {
+  font-size: .86rem;
+  font-weight: 700;
+  color: var(--crime);
+  margin-top: 10px;
+}
+
+.painel--rp { border-left: 4px solid var(--rpg); }
+
+/* ---- Conquistas do epílogo -------------------------------------------- */
+.conquistas { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; }
+.conquista {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 15px;
+  border-radius: var(--raio-p);
+  border: 1px solid var(--borda);
+  border-left: 4px solid var(--rpg);
+  background: var(--superficie-2);
+}
+.conquista__nome { font-size: .97rem; font-weight: 800; color: var(--rpg); }
+.conquista__nota { font-size: .88rem; color: var(--texto-suave); }
+
+/* ---- Responsivo da camada de RPG -------------------------------------- */
+@media (max-width: 1000px) {
+  .ficha { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .ficha__atributos,
+  .ficha__recursos { grid-column: 1 / -1; }
+}
+
+@media (max-width: 700px) {
+  .origens { grid-template-columns: 1fr; }
+  .ficha-cheia__atributos { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 560px) {
+  .ficha { grid-template-columns: 1fr; gap: 10px; padding: 12px 13px; }
+  .ficha__retrato { width: 38px; height: 38px; }
+  .ficha__atributos .atr__nome { display: none; }
+  .rec--largo { flex: 1 1 100%; }
+  .ficha-cheia { padding: 18px; }
+  .ficha-cheia__retrato { width: 68px; height: 68px; }
+  .evento { padding: 20px 17px 22px; }
+  .dado { width: 96px; height: 96px; }
+  .dado__numero { font-size: 30px; }
+  .abordagem__tecla,
+  .origem__tecla { display: none; }
 }
